@@ -20,7 +20,8 @@ def on_press(key):
 listener = keyboard.Listener(on_press=on_press)
 listener.start()
 
-cam.start_preview(Preview.QTGL, x=100, y=200, width=800, height=600)
+cam.resolution = (4056, 3040)
+cam.start_preview()
 cam.start()
 cam.title_fields = ["ExposureTime", "AnalogueGain"]
 

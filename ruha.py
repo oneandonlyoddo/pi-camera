@@ -10,10 +10,15 @@ def capture():
     camera.capture_file(filename, format="png", wait=None)
     print(f"\rCaptured {filename} succesfully")
 
-camera_config = camera.create_preview_configuration()
-camera.configure(camera_config)
-camera.start_preview(Preview.QTGL)
+WIDTH = 800
+HEIGHT = 480
+
+camera = Picamera2()
+config = camera.create_preview_configuration({"size": (WIDTH, HEIGHT)})
+camera.configure(config)
+camera.start_preview(Preview.DRM, x=0, y=0, width=WIDTH, height=HEIGHT)
 camera.start()
+
 
 while True:
     button.when_pressed = capture

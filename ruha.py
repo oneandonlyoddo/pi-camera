@@ -13,9 +13,11 @@ def capture():
 WIDTH = 800
 HEIGHT = 480
 
-config = camera.create_preview_configuration({"size": (WIDTH, HEIGHT)})
+#config = camera.create_preview_configuration({"size": (WIDTH, HEIGHT)})
+config = picam2.create_still_configuration(lores={"size": (320, 240)}, display="lores")
 camera.configure(config)
-camera.start_preview(Preview.QTGL, x=0, y=0, width=WIDTH, height=HEIGHT)
+camera.start_preview(Preview.DRM, x=0, y=0, width=WIDTH, height=HEIGHT)
+camera.start_preview(Preview.DRM)
 camera.start()
 
 

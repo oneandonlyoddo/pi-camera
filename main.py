@@ -3,7 +3,7 @@ from libcamera import Transform, controls
 from sys import stdin
 from termios import TCIOFLUSH, tcflush
 from time import strftime
-from keyboard import is_pressed
+from pynput import keyboard
 camera = Picamera2()
 loop = True
 
@@ -36,3 +36,4 @@ else:
     cam.stop_preview()
     cam.stop()
     cam.close()
+    tcflush(stdin, TCIOFLUSH)

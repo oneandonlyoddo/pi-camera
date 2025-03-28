@@ -6,7 +6,7 @@ button = Button(26)
 camera = Picamera2()
 
 def capture():
-    filename = "./out/" + strftime("%Y%m%d-%H%M%S") + '.png'
+    filename = "./web/static/" + strftime("%Y%m%d-%H%M%S") + '.png'
     camera.switch_mode_and_capture_file("still", filename, format="png", wait=None)
     print(f"\rCaptured {filename} succesfully")
     sleep(.5)

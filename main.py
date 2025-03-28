@@ -15,7 +15,7 @@ def on_press(key):
         global loop
         loop = False
         print(loop)
-    elif key == keyboard.Key.s:
+    elif key == keyboard.KeyCode.from_char("s"):
         filename = "./web/static/" + strftime("%Y%m%d-%H%M%S") + '.png'
         camera.switch_mode_and_capture_file("still", filename, format="png", wait=None)
         print(f"\rCaptured {filename} succesfully")

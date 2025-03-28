@@ -1,0 +1,25 @@
+body{
+    background-color: black;
+    margin: 10px;
+}
+
+.container{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.img-container{
+    width: 33.33%;
+    box-sizing: border-box;
+    padding: 10px;
+}
+
+.img-container:hover{
+    opacity: 0.75;
+    background-color: darkgrey;
+}
+
+.gallery-img{
+    max-width:100%;
+}

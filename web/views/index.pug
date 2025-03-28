@@ -1,0 +1,11 @@
+html
+  head
+    style
+        include style.css
+    title= title
+  body
+    div(class='container')
+        each file in files
+            div(class='img-container')
+                a(href=file)
+                    img(class="gallery-img", src=file, alt="")

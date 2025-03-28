@@ -21,5 +21,5 @@ camera.start_preview(Preview.DRM, x=0, y=0, width=WIDTH, height=HEIGHT)
 camera.start()
 
 while True:
-    button.when_pressed = capture
+    button.when_released = capture
         

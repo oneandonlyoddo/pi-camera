@@ -1,8 +1,9 @@
 from picamera2 import Picamera2, Preview
 from libcamera import Transform, controls
-from pynput import keyboard
+from sys import stdin
+from termios import TCIOFLUSH, tcflush
 from time import strftime
-
+from keyboard import is_pressed
 camera = Picamera2()
 loop = True
 
@@ -12,21 +13,21 @@ def on_press(key):
         loop = False
         print(loop)
     elif key == keyboard.Key.down:
-        filename = strftime("%Y%m%d-%H%M%S") + '.png'
+        filename = "./web/static/" + strftime("%Y%m%d-%H%M%S") + '.png'
         camera.switch_mode_and_capture_file("still", filename, format="png", wait=None)
         print(f"\rCaptured {filename} succesfully")
 
 listener = keyboard.Listener(on_press=on_press)
 listener.start()
 
-WIDTH = 1360
-HEIGHT = 768
-camera.preview_configuration.size = (400, 240)
+WIDTH = 800
+HEIGHT = 480
+camera.preview_configuration.size = (WIDTH, HEIGHT)
 camera.preview_configuration.format = "YUV420"
 camera.still_configuration.size = (1600, 960)
 camera.still_configuration.enable_raw()
 camera.still_configuration.raw.size = camera.sensor_resolution
-camera.start_preview(Preview.DRM, x=0, y=0, width=WIDTH, height=HEIGHT)
+camera.start_preview(Preview.QTGL, x=0, y=0, width=WIDTH, height=HEIGHT)
 camera.start()
 
 while loop:

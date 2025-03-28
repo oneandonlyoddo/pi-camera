@@ -11,8 +11,12 @@ aGain = 1.0
 controlNeedsUpdate = False
 
 def on_press(key):
-    if key == keyboard.Key.esc:
-        global loop
+    global loop
+    global eTime
+    global aGain
+    global controlNeedsUpdate
+
+    if key == keyboard.Key.esc:    
         loop = False
         print(loop)
     elif key == keyboard.KeyCode.from_char("s"):
@@ -31,8 +35,6 @@ def on_press(key):
     elif key == keyboard.Key.right:
         aGain += 0.05
         controlNeedsUpdate = True
-
-   
 
 listener = keyboard.Listener(on_press=on_press)
 listener.start()

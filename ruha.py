@@ -1,6 +1,6 @@
 from gpiozero import Button
 from picamera2 import Picamera2, Preview
-from time import strftime
+from time import strftime, sleep
 
 button = Button(26)
 camera = Picamera2()
@@ -9,6 +9,7 @@ def capture():
     filename = "./out/" + strftime("%Y%m%d-%H%M%S") + '.png'
     camera.switch_mode_and_capture_file("still", filename, format="png", wait=None)
     print(f"\rCaptured {filename} succesfully")
+    sleep(.5)
 
 WIDTH = 1360
 HEIGHT = 768
@@ -22,4 +23,4 @@ camera.start()
 
 while True:
     button.when_released = capture
-        
+    

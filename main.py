@@ -3,8 +3,7 @@ from libcamera import Transform, controls
 from pynput import keyboard
 from time import strftime
 
-
-cam = Picamera2()
+camera = Picamera2()
 loop = True
 
 def on_press(key):
@@ -14,16 +13,21 @@ def on_press(key):
         print(loop)
     elif key == keyboard.Key.down:
         filename = strftime("%Y%m%d-%H%M%S") + '.png'
-        cam.capture_file(filename, format="png", wait=None)
+        camera.switch_mode_and_capture_file("still", filename, format="png", wait=None)
         print(f"\rCaptured {filename} succesfully")
 
 listener = keyboard.Listener(on_press=on_press)
 listener.start()
 
-cam.resolution = (4056, 3040)
-cam.start_preview()
-cam.start()
-cam.title_fields = ["ExposureTime", "AnalogueGain"]
+WIDTH = 1360
+HEIGHT = 768
+camera.preview_configuration.size = (400, 240)
+camera.preview_configuration.format = "YUV420"
+camera.still_configuration.size = (1600, 960)
+camera.still_configuration.enable_raw()
+camera.still_configuration.raw.size = camera.sensor_resolution
+camera.start_preview(Preview.DRM, x=0, y=0, width=WIDTH, height=HEIGHT)
+camera.start()
 
 while loop:
     pass

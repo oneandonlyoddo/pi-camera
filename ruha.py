@@ -7,19 +7,18 @@ camera = Picamera2()
 
 def capture():
     filename = strftime("%Y%m%d-%H%M%S") + '.png'
-    camera.capture_file(filename, format="png", wait=None)
+    camera.switch_mode_and_capture_file("still", filename, format="png", wait=None)
     print(f"\rCaptured {filename} succesfully")
 
 WIDTH = 800
 HEIGHT = 480
-#camera.stop_preview()
-#config = camera.create_preview_configuration({"size": (WIDTH, HEIGHT)})
-config = camera.create_still_configuration(lores={"size": (320, 240)}, display="lores")
-camera.configure(config)
-#camera.start_preview(Preview.DRM, x=0, y=0, width=WIDTH, height=HEIGHT)
-camera.start_preview(Preview.DRM)
-camera.start()
+camera.preview_configuration.size = (400, 240)
+camera.preview_configuration.format = "YUV420"
+camera.still_configuration.size = (800, 480)
+camera.still_configuration.enable_raw()
+camera.still_configuration.raw.size = camera.sensor_resolution
 
+camera.start("preview", show_preview=True)
 
 while True:
     button.when_pressed = capture

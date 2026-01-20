@@ -11,9 +11,9 @@ def capture():
     print(f"\rCaptured {filename} succesfully")
     sleep(100)
 
-WIDTH = 1360
-HEIGHT = 768
-camera.preview_configuration.size = (400, 240)
+WIDTH = 800
+HEIGHT = 480
+camera.preview_configuration.size = (800, 480)
 camera.preview_configuration.format = "YUV420"
 camera.still_configuration.size = (1600, 960)
 camera.still_configuration.enable_raw()

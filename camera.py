@@ -10,7 +10,6 @@ import datetime
 import os
 from pathlib import Path
 from picamera2 import Picamera2, Preview
-from libcamera import controls
 import RPi.GPIO as GPIO
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
@@ -47,8 +46,7 @@ from settings import (
     HUD_COLOR_TIME_TEXT,
     HUD_COLOR_DATE_TEXT,
     HUD_COLOR_SHADOW,
-    HUD_SHADOW_OFFSET,
-    AUTOFOCUS_ENABLED,
+    HUD_SHADOW_OFFSET
 )
 
 class DigitalCamera:
@@ -105,16 +103,7 @@ class DigitalCamera:
         # Start with preview configuration
         self.camera.configure(preview_config)
         
-        # Set autofocus mode (if supported by HQ camera)
-        if AUTOFOCUS_ENABLED:
-            try:
-                self.camera.set_controls({
-                    "AfMode": controls.AfModeEnum.Continuous,
-                    "AfSpeed": controls.AfSpeedEnum.Fast
-                })
-            except Exception as e:
-                print(f"Autofocus not available: {e}")
-        
+       
         # Start the camera with fullscreen preview
         self.camera.start_preview(
             Preview.QTGL,

@@ -31,7 +31,8 @@ from settings import (
     PREVIEW_WINDOW_HEIGHT,
     PREVIEW_WINDOW_X,
     PREVIEW_WINDOW_Y,
-    CAPTURE_PAUSE_DURATION
+    CAPTURE_PAUSE_DURATION,
+    HUD_UPDATE_INTERVAL
 )
 
 class DigitalCamera:
@@ -73,7 +74,7 @@ class DigitalCamera:
        
         # Start the camera with fullscreen preview
         self.camera.start_preview(
-            Preview.DRM,
+            Preview.QTGL,
             x=PREVIEW_WINDOW_X,
             y=PREVIEW_WINDOW_Y,
             width=PREVIEW_WINDOW_WIDTH,
@@ -90,7 +91,7 @@ class DigitalCamera:
         """
         if self.running:
             print("Shutter button pressed - capturing image...")
-            self.capture_photo()
+            #self.capture_photo()
             
     def capture_photo(self):
         """Capture and save a photo in both JPG and RAW formats."""
@@ -147,6 +148,11 @@ class DigitalCamera:
             
             self.setup_camera()
             self.running = True
+            # Keep the program running and update HUD
+            while self.running:
+                #self.update_hud()
+                time.sleep(HUD_UPDATE_INTERVAL)
+               
             
                 
         except KeyboardInterrupt:

@@ -8,7 +8,7 @@ from pathlib import Path
 # ============================================================================
 # GPIO CONFIGURATION
 # ============================================================================
-GPIO_BUTTON_PIN = 17  # GPIO pin for shutter button (BCM numbering)
+GPIO_BUTTON_PIN = 26  # GPIO pin for shutter button (BCM numbering)
 GPIO_DEBOUNCE_TIME = 300  # Button debounce time in milliseconds
 
 # ============================================================================

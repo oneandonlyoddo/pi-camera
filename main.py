@@ -24,16 +24,16 @@ def on_press(key):
         camera.switch_mode_and_capture_file("still", filename, format="png", wait=None)
         print(f"\rCaptured {filename} succesfully")
     elif key == keyboard.Key.up:
-        eTime += 10
+        eTime += 1000
         controlNeedsUpdate = True
     elif key == keyboard.Key.down:
-        eTime -= 10
+        eTime -= 1000
         controlNeedsUpdate = True
     elif key == keyboard.Key.left:
-        aGain -= 0.05
+        aGain -= 0.2
         controlNeedsUpdate = True
     elif key == keyboard.Key.right:
-        aGain += 0.05
+        aGain += 0.2
         controlNeedsUpdate = True
 
 listener = keyboard.Listener(on_press=on_press)

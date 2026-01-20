@@ -12,7 +12,7 @@ from pathlib import Path
 from picamera2 import Picamera2, Preview
 from gpiozero import Button
 from PIL import Image, ImageDraw, ImageFont
-import numpy as np
+
 
 # Import all settings
 from settings import (

@@ -4,4 +4,4 @@ gpiozero>=2.0
 
 # Image Processing for HUD Overlay
 Pillow>=12.1.0
-numpy>=2.4.1
+

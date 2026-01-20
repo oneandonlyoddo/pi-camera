@@ -1,7 +1,7 @@
 # Raspberry Pi Camera Dependencies
 picamera2>=0.3.33
 libcamera>=0.0.1
-RPi.GPIO>=0.7.1
+gpiozero>=2.0
 
 # Image Processing for HUD Overlay
 Pillow>=12.1.0

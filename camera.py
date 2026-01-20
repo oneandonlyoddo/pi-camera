@@ -10,7 +10,7 @@ import datetime
 import os
 from pathlib import Path
 from picamera2 import Picamera2, Preview
-import RPi.GPIO as GPIO
+from gpiozero import Button
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 
@@ -60,7 +60,8 @@ class DigitalCamera:
             button_pin: GPIO pin number for the shutter button (BCM mode)
             photos_dir: Directory to save captured photos
         """
-        self.button_pin = button_pin
+        self.button = Button(button_pin, bounce_time=GPIO_DEBOUNCE_TIME)
+        self.button.when_pressed = self.button_pressed
         self.photos_dir = Path(photos_dir)
         self.camera = None
         self.running = False
@@ -71,17 +72,7 @@ class DigitalCamera:
         self.photos_dir.mkdir(parents=True, exist_ok=True)
         print(f"Photos will be saved to: {self.photos_dir}")
         
-    def setup_gpio(self):
-        """Configure GPIO for the hardware shutter button."""
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(self.button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.add_event_detect(
-            self.button_pin,
-            GPIO.FALLING,
-            callback=self.button_pressed,
-            bouncetime=GPIO_DEBOUNCE_TIME
-        )
-        print(f"GPIO configured: Button on pin {self.button_pin}")
+
         
     def setup_camera(self):
         """Initialize and configure the camera with optimal settings."""
@@ -119,12 +110,9 @@ class DigitalCamera:
         
         print("Camera initialized with fullscreen preview")
         
-    def button_pressed(self, channel):
+    def button_pressed(self):
         """
         Callback function triggered when shutter button is pressed.
-        
-        Args:
-            channel: GPIO channel that triggered the event
         """
         if self.running:
             print("Shutter button pressed - capturing image...")
@@ -256,7 +244,6 @@ class DigitalCamera:
             print("Starting Raspberry Pi Digital Camera...")
             print("Press Ctrl+C to exit")
             
-            self.setup_gpio()
             self.setup_camera()
             self.running = True
             
@@ -280,7 +267,7 @@ class DigitalCamera:
             self.camera.stop_preview()
             self.camera.stop()
             self.camera.close()
-        GPIO.cleanup()
+        self.button.close()
         print("Camera stopped. Goodbye!")
 
 

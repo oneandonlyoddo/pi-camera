@@ -12,6 +12,7 @@ from pathlib import Path
 from picamera2 import Picamera2, Preview
 from gpiozero import Button
 from PIL import Image, ImageDraw, ImageFont
+import numpy as np
 
 
 # Import all settings
@@ -167,7 +168,8 @@ class DigitalCamera:
         """Initialize the HUD overlay for displaying time and date."""
         # Create a transparent overlay image
         overlay_img = Image.new('RGBA', self.preview_size, (0, 0, 0, 0))
-        self.overlay = self.camera.set_overlay(overlay_img)
+        # Picamera2 requires a numpy array for set_overlay
+        self.overlay = self.camera.set_overlay(np.asarray(overlay_img))
         print("HUD overlay initialized")
     
     def update_hud(self):
@@ -236,7 +238,8 @@ class DigitalCamera:
         
         # Update the overlay
         if self.overlay:
-            self.camera.set_overlay(overlay_img)
+            # Picamera2 requires a numpy array for set_overlay
+            self.camera.set_overlay(np.asarray(overlay_img))
             
     def run(self):
         """Start the camera and enter main loop."""

@@ -47,7 +47,7 @@ camera.still_configuration.size = (1600, 960)
 camera.still_configuration.enable_raw()
 camera.still_configuration.raw.size = camera.sensor_resolution
 camera.set_controls({"ExposureTime": eTime, "AnalogueGain": aGain})
-camera.start_preview(Preview.QTGL, x=0, y=0, width=WIDTH, height=HEIGHT)
+camera.start_preview(Preview.DRM, x=0, y=0, width=WIDTH, height=HEIGHT)
 camera.start()
 
 while loop:

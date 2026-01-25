@@ -98,7 +98,7 @@ class DigitalCamera:
        
         # Start the camera with fullscreen preview
         self.camera.start_preview(
-            Preview.QTGL,
+            Preview.DRM,
             x=PREVIEW_WINDOW_X,
             y=PREVIEW_WINDOW_Y,
             width=PREVIEW_WINDOW_WIDTH,

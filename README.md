@@ -68,17 +68,19 @@ sudo reboot
 
 ## Usage
 
+## Usage
+
 ### Run the Camera
 
 ```bash
-python3 camera.py
+python3 main.py
 ```
 
 Or make it executable and run directly:
 
 ```bash
-chmod +x camera.py
-./camera.py
+chmod +x main.py
+./main.py
 ```
 
 ### Taking Photos
@@ -102,8 +104,8 @@ All configurable settings are centralized in [`settings.py`](file:///c:/Users/jo
 
 #### GPIO Configuration
 ```python
-GPIO_BUTTON_PIN = 17              # GPIO pin for shutter button (BCM numbering)
-GPIO_DEBOUNCE_TIME = 300          # Button debounce time in milliseconds
+GPIO_BUTTON_PIN = 26              # GPIO pin for shutter button (BCM numbering)
+GPIO_DEBOUNCE_TIME = 0.3          # Button debounce time in seconds
 ```
 
 #### File Paths and Naming
@@ -116,25 +118,24 @@ FILENAME_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"  # Timestamp format
 #### Camera Resolution
 ```python
 # Preview resolution (for live view)
-PREVIEW_WIDTH = 1640
-PREVIEW_HEIGHT = 1232
+PREVIEW_WIDTH = 800
+PREVIEW_HEIGHT = 480
 
 # Capture resolution (for high-res still images)
 CAPTURE_WIDTH = 4056
 CAPTURE_HEIGHT = 3040
 
 # Fullscreen preview window size
-PREVIEW_WINDOW_WIDTH = 1920
-PREVIEW_WINDOW_HEIGHT = 1080
+PREVIEW_WINDOW_X = 0
+PREVIEW_WINDOW_Y = 0
 ```
 
 #### HUD (Heads-Up Display)
 ```python
-HUD_FONT_SIZE_LARGE = 32          # Font size for time display
-HUD_FONT_SIZE_SMALL = 24          # Font size for date display
-HUD_PADDING = 20                  # Padding from screen edges
-HUD_COLOR_TIME_TEXT = (255, 255, 255, 255)  # White text (RGBA)
-HUD_COLOR_DATE_TEXT = (200, 200, 200, 255)  # Light gray text (RGBA)
+HUD_FONT_SIZE = 24                # Font size
+HUD_PADDING_W = 6                 # Horizontal padding
+HUD_PADDING_H = 6                 # Vertical padding
+HUD_COLOR_TEXT = (0, 0, 0, 255)   # Black text (RGBA)
 ```
 
 #### Timing
@@ -179,11 +180,14 @@ Ensure you have a display connected via HDMI or DSI. The preview requires a grap
 ## File Structure
 
 ```
-pi-camera-ai/
-├── camera.py          # Main camera application
+pi-camera/
+├── main.py            # Application entry point
+├── digital_camera.py  # Camera controller logic
+├── hud.py             # HUD overlay implementation
 ├── settings.py        # Configuration settings
+├── assets/            # Resources (fonts, images)
 ├── requirements.txt   # Python dependencies
-└── README.md         # This file
+└── README.md          # This file
 ```
 
 ## License

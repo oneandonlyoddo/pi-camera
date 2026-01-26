@@ -1,4 +1,0 @@
-Picamera2
-nodejs
-npm
-

@@ -8,28 +8,7 @@ import numpy as np
 from picamera2 import Picamera2, Preview
 import libcamera
 
-from settings import (
-    
-    PREVIEW_WIDTH,
-    PREVIEW_HEIGHT,
-    PREVIEW_WINDOW_X,
-    PREVIEW_WINDOW_Y,
-    HUD_UPDATE_INTERVAL,
-    HUD_FONT_PATH_LARGE,
-    HUD_FONT_PATH_SMALL,
-    HUD_FONT_SIZE_LARGE,
-    HUD_FONT_SIZE_SMALL,
-    HUD_DATE_FORMAT,
-    HUD_TIME_FORMAT,
-    HUD_PADDING,
-    HUD_BACKGROUND_PADDING,
-    HUD_TEXT_SPACING,
-    HUD_COLOR_BACKGROUND,
-    HUD_COLOR_TIME_TEXT,
-    HUD_COLOR_DATE_TEXT,
-    HUD_COLOR_SHADOW,
-    HUD_SHADOW_OFFSET
-)
+from settings import *
 
 
 preview_size = (PREVIEW_WIDTH, PREVIEW_HEIGHT)

@@ -1,4 +1,3 @@
-
 import datetime
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
@@ -54,8 +53,6 @@ class HUD:
         now = datetime.datetime.now()
         time_str = now.strftime(HUD_TIME_FORMAT)
 
-        
-        
         # Try getting metadata
         try:
             metadata = camera.capture_metadata()

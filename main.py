@@ -13,6 +13,5 @@ def main():
     camera = DigitalCamera()
     camera.run()
 
-
 if __name__ == "__main__":
     main()

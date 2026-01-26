@@ -17,6 +17,23 @@ class HUD:
         """
         self.preview_size = (width, height)
         self.overlay = None
+        self.background_image = None
+        
+        # Load background image if configured
+        if HUD_BACKGROUND_IMAGE_PATH:
+            try:
+                bg_path = Path(HUD_BACKGROUND_IMAGE_PATH)
+                if bg_path.exists():
+                    img = Image.open(bg_path).convert('RGBA')
+                    # Resize to match preview size if needed
+                    if img.size != self.preview_size:
+                        img = img.resize(self.preview_size, Image.Resampling.LANCZOS)
+                    self.background_image = img
+                    print(f"Loaded HUD background from {bg_path}")
+                else:
+                    print(f"Warning: HUD background file not found: {bg_path}")
+            except Exception as e:
+                print(f"Error loading HUD background: {e}")
         
     def update(self, camera):
         """
@@ -26,7 +43,11 @@ class HUD:
             camera: Picamera2 instance to set the overlay on
         """
         # Create a transparent image for the overlay
-        overlay_img = Image.new('RGBA', self.preview_size, (0, 0, 0, 0))
+        if self.background_image:
+            overlay_img = self.background_image.copy()
+        else:
+            overlay_img = Image.new('RGBA', self.preview_size, (0, 0, 0, 0))
+            
         draw = ImageDraw.Draw(overlay_img)
         
         # Get current date and time
@@ -54,17 +75,19 @@ class HUD:
         date_height = date_bbox[3] - date_bbox[1]
         time_height = time_bbox[3] - time_bbox[1]
         
-        # Calculate background rectangle dimensions to fit both time and date
-        bg_width = max(time_width, date_width) + (HUD_BACKGROUND_PADDING * 2)
-        bg_height = time_height + date_height + (HUD_BACKGROUND_PADDING * 3)
-        bg_x = self.preview_size[0] - bg_width - HUD_PADDING + HUD_BACKGROUND_PADDING
-        bg_y = HUD_PADDING - HUD_BACKGROUND_PADDING
-        
-        # Draw semi-transparent background for better readability
-        draw.rectangle(
-            [bg_x, bg_y, bg_x + bg_width, bg_y + bg_height],
-            fill=HUD_COLOR_BACKGROUND
-        )
+        # Only draw background rectangle if no custom background image is loaded
+        if not self.background_image:
+            # Calculate background rectangle dimensions to fit both time and date
+            bg_width = max(time_width, date_width) + (HUD_BACKGROUND_PADDING * 2)
+            bg_height = time_height + date_height + (HUD_BACKGROUND_PADDING * 3)
+            bg_x = self.preview_size[0] - bg_width - HUD_PADDING + HUD_BACKGROUND_PADDING
+            bg_y = HUD_PADDING - HUD_BACKGROUND_PADDING
+            
+            # Draw semi-transparent background for better readability
+            draw.rectangle(
+                [bg_x, bg_y, bg_x + bg_width, bg_y + bg_height],
+                fill=HUD_COLOR_BACKGROUND
+            )
         
         # Draw time text with shadow for better visibility
         draw.text(

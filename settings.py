@@ -70,3 +70,8 @@ HUD_COLOR_TIME_TEXT = (255, 255, 255, 255)  # White text for time
 HUD_COLOR_DATE_TEXT = (200, 200, 200, 255)  # Light gray text for date
 HUD_COLOR_SHADOW = (0, 0, 0, 200)  # Black shadow for text
 HUD_SHADOW_OFFSET = 2  # Pixel offset for text shadow
+
+# HUD Background Image
+# Path to a transparent PNG to use as the HUD background (optional)
+# Set to None to use the default generated background
+HUD_BACKGROUND_IMAGE_PATH = "./assets/hud_grid.png"

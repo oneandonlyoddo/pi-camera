@@ -1,54 +1,22 @@
 #!/usr/bin/env python3
+
 """
 Raspberry Pi Zero Digital Camera
 A simple digital camera implementation using the Raspberry Pi HQ Camera module.
 Provides fullscreen preview, hardware button trigger, and saves images in JPG and RAW formats.
 """
+# Import all settings
+from settings import *
 
 import time
 import datetime
 import os
 from pathlib import Path
 from picamera2 import Picamera2, Preview
+import libcamera
 from gpiozero import Button
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
-
-
-# Import all settings
-from settings import (
-    GPIO_BUTTON_PIN,
-    GPIO_DEBOUNCE_TIME,
-    PHOTOS_DIR,
-    FILENAME_PREFIX,
-    FILENAME_TIMESTAMP_FORMAT,
-    JPG_EXTENSION,
-    RAW_EXTENSION,
-    PREVIEW_WIDTH,
-    PREVIEW_HEIGHT,
-    CAPTURE_WIDTH,
-    CAPTURE_HEIGHT,
-    PREVIEW_WINDOW_WIDTH,
-    PREVIEW_WINDOW_HEIGHT,
-    PREVIEW_WINDOW_X,
-    PREVIEW_WINDOW_Y,
-    CAPTURE_PAUSE_DURATION,
-    HUD_UPDATE_INTERVAL,
-    HUD_FONT_PATH_LARGE,
-    HUD_FONT_PATH_SMALL,
-    HUD_FONT_SIZE_LARGE,
-    HUD_FONT_SIZE_SMALL,
-    HUD_DATE_FORMAT,
-    HUD_TIME_FORMAT,
-    HUD_PADDING,
-    HUD_BACKGROUND_PADDING,
-    HUD_TEXT_SPACING,
-    HUD_COLOR_BACKGROUND,
-    HUD_COLOR_TIME_TEXT,
-    HUD_COLOR_DATE_TEXT,
-    HUD_COLOR_SHADOW,
-    HUD_SHADOW_OFFSET
-)
 
 class DigitalCamera:
     """Digital camera controller for Raspberry Pi HQ Camera module."""
@@ -67,55 +35,63 @@ class DigitalCamera:
         self.camera = None
         self.running = False
         self.overlay = None
-        self.preview_size = (PREVIEW_WINDOW_WIDTH, PREVIEW_WINDOW_HEIGHT)
+        self.preview_size = (PREVIEW_WIDTH, PREVIEW_HEIGHT)
         
         # Create photos directory if it doesn't exist
         self.photos_dir.mkdir(parents=True, exist_ok=True)
         print(f"Photos will be saved to: {self.photos_dir}")
         
-
-        
     def setup_camera(self):
         """Initialize and configure the camera with optimal settings."""
         self.camera = Picamera2()
         
-        # Configure camera for high quality still capture
-        # Preview config for the live view
-        preview_config = self.camera.create_preview_configuration(
-            main={"size": (PREVIEW_WIDTH, PREVIEW_HEIGHT)},
-            display="main"
-        )
-        
-        # Still config for capturing high-res images
-        still_config = self.camera.create_still_configuration(
-            main={"size": (CAPTURE_WIDTH, CAPTURE_HEIGHT)},
-            raw={"size": (CAPTURE_WIDTH, CAPTURE_HEIGHT)}
-        )
-        
-        # Start with preview configuration
-        self.camera.configure(preview_config)
-        
-       
         # Start the camera with fullscreen preview
         self.camera.start_preview(
             Preview.DRM,
             x=PREVIEW_WINDOW_X,
             y=PREVIEW_WINDOW_Y,
-            width=PREVIEW_WINDOW_WIDTH,
-            height=PREVIEW_WINDOW_HEIGHT
+            width=PREVIEW_WIDTH,
+            height=PREVIEW_HEIGHT
         )
+        
+        # Preview config for the live view
+        preview_config = self.camera.create_preview_configuration(main={"size": (PREVIEW_WIDTH, PREVIEW_HEIGHT)})
+        preview_config["format"] = "YUV420"
+        if PREVIEW_ROTATE:
+            preview_config["transform"] = libcamera.Transform(hflip=1, vflip=1)
+
+           # Start with preview configuration
+        self.camera.configure(preview_config)
+        
         self.camera.start()
+        time.sleep(1)
+        
+        '''
+        # Still config for capturing high-res images
+        still_config = self.camera.create_still_configuration(
+            main={"size": (CAPTURE_WIDTH, CAPTURE_HEIGHT)},
+            raw={"size": (CAPTURE_WIDTH, CAPTURE_HEIGHT)}
+        )
+
+    '''
+        
+        
+        
+       
+        
+        
+     
         
         # Create initial overlay for HUD
-        self.setup_hud()
+        #self.setup_hud()
         
         print("Camera initialized with fullscreen preview")
-        
+      
     def button_pressed(self):
         """
         Callback function triggered when shutter button is pressed.
         """
-        if self.running:
+        if self.running and GPIO_CONNECTED:
             print("Shutter button pressed - capturing image...")
             self.capture_photo()
             
@@ -163,15 +139,15 @@ class DigitalCamera:
             
         except Exception as e:
             print(f"✗ Error capturing photo: {e}")
-    
+    '''
     def setup_hud(self):
         """Initialize the HUD overlay for displaying time and date."""
         # Create a transparent overlay image
         overlay_img = Image.new('RGBA', self.preview_size, (0, 0, 0, 0))
         # Picamera2 requires a numpy array for set_overlay
-        self.overlay = self.camera.set_overlay(np.asarray(overlay_img))
+        self.overlay = self.camera.set_overlay(np.array(overlay_img))
         print("HUD overlay initialized")
-    
+    '''
     def update_hud(self):
         """Update the HUD overlay with current time and date."""
         # Create a transparent image for the overlay
@@ -237,9 +213,9 @@ class DigitalCamera:
         draw.text((date_x, date_y), date_str, font=font_small, fill=HUD_COLOR_DATE_TEXT)
         
         # Update the overlay
-        if self.overlay:
-            # Picamera2 requires a numpy array for set_overlay
-            self.camera.set_overlay(np.array(overlay_img))
+        if PREVIEW_ROTATE:
+            overlay_img = overlay_img.rotate(180)
+        self.camera.set_overlay(np.array(overlay_img))
             
     def run(self):
         """Start the camera and enter main loop."""

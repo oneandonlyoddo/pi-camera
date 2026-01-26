@@ -1,61 +1,18 @@
-from picamera2 import Picamera2, Preview
-from libcamera import Transform, controls
-from sys import stdin
-from termios import TCIOFLUSH, tcflush
-from time import strftime
-from pynput import keyboard
-camera = Picamera2()
-loop = True
-eTime = 10000
-aGain = 1.0
-controlNeedsUpdate = False
+#!/usr/bin/env python3
 
-def on_press(key):
-    global loop
-    global eTime
-    global aGain
-    global controlNeedsUpdate
+"""
+Raspberry Pi Zero Digital Camera
+A simple digital camera implementation using the Raspberry Pi HQ Camera module.
+Provides fullscreen preview, hardware button trigger, and saves images in JPG and RAW formats.
+"""
 
-    if key == keyboard.Key.esc:    
-        loop = False
-        print(loop)
-    elif key == keyboard.KeyCode.from_char("s"):
-        filename = "./web/static/" + strftime("%Y%m%d-%H%M%S") + '.png'
-        camera.switch_mode_and_capture_file("still", filename, format="png", wait=None)
-        print(f"\rCaptured {filename} succesfully")
-    elif key == keyboard.Key.up:
-        eTime += 1000
-        controlNeedsUpdate = True
-    elif key == keyboard.Key.down:
-        eTime -= 1000
-        controlNeedsUpdate = True
-    elif key == keyboard.Key.left:
-        aGain -= 0.2
-        controlNeedsUpdate = True
-    elif key == keyboard.Key.right:
-        aGain += 0.2
-        controlNeedsUpdate = True
+from digital_camera import DigitalCamera
 
-listener = keyboard.Listener(on_press=on_press)
-listener.start()
+def main():
+    """Main entry point for the camera application."""
+    camera = DigitalCamera()
+    camera.run()
 
-WIDTH = 800
-HEIGHT = 480
-camera.preview_configuration.size = (400, 240)
-camera.preview_configuration.format = "YUV420"
-camera.still_configuration.size = (1600, 960)
-camera.still_configuration.enable_raw()
-camera.still_configuration.raw.size = camera.sensor_resolution
-camera.set_controls({"ExposureTime": eTime, "AnalogueGain": aGain})
-camera.start_preview(Preview.DRM, x=0, y=0, width=WIDTH, height=HEIGHT)
-camera.start()
 
-while loop:
-    if controlNeedsUpdate:
-        camera.set_controls({"ExposureTime": eTime, "AnalogueGain": aGain})
-        controlNeedsUpdate = False
-else:
-    camera.stop_preview()
-    camera.stop()
-    camera.close()
-    tcflush(stdin, TCIOFLUSH)
+if __name__ == "__main__":
+    main()

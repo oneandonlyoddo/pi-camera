@@ -239,7 +239,7 @@ class DigitalCamera:
         # Update the overlay
         if self.overlay:
             # Picamera2 requires a numpy array for set_overlay
-            self.camera.set_overlay(np.asarray(overlay_img))
+            self.camera.set_overlay(np.array(overlay_img))
             
     def run(self):
         """Start the camera and enter main loop."""

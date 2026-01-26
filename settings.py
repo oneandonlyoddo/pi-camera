@@ -10,6 +10,7 @@ from pathlib import Path
 # ============================================================================
 GPIO_BUTTON_PIN = 26  # GPIO pin for shutter button (BCM numbering)
 GPIO_DEBOUNCE_TIME = 0.3  # Button debounce time in seconds
+GPIO_CONNECTED = False
 
 # ============================================================================
 # FILE PATHS
@@ -32,10 +33,12 @@ CAPTURE_WIDTH = 4056
 CAPTURE_HEIGHT = 3040
 
 # Fullscreen preview window size
-PREVIEW_WINDOW_WIDTH = 1920
-PREVIEW_WINDOW_HEIGHT = 1080
+PREVIEW_WINDOW_WIDTH = 800
+PREVIEW_WINDOW_HEIGHT = 480
 PREVIEW_WINDOW_X = 0
 PREVIEW_WINDOW_Y = 0
+
+PREVIEW_ROTATE = True
 
 # ============================================================================
 # CAMERA TIMING

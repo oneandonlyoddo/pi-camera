@@ -24,8 +24,8 @@ RAW_EXTENSION = ".dng"  # RAW (DNG) file extension
 # CAMERA RESOLUTION SETTINGS
 # ============================================================================
 # Preview resolution (for live view)
-PREVIEW_WIDTH = 1640
-PREVIEW_HEIGHT = 1232
+PREVIEW_WIDTH = 800
+PREVIEW_HEIGHT = 480
 
 # Capture resolution (for high-res still images)
 CAPTURE_WIDTH = 4056

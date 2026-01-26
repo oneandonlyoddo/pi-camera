@@ -12,6 +12,8 @@ from settings import (
     
     PREVIEW_WIDTH,
     PREVIEW_HEIGHT,
+    PREVIEW_WINDOW_X,
+    PREVIEW_WINDOW_Y,
     HUD_UPDATE_INTERVAL,
     HUD_FONT_PATH_LARGE,
     HUD_FONT_PATH_SMALL,
@@ -34,15 +36,15 @@ preview_size = (PREVIEW_WIDTH, PREVIEW_HEIGHT)
 picam2 = Picamera2()
 picam2.start_preview(
     Preview.DRM,
-
-    #width=PREVIEW_WIDTH,
-    #height=PREVIEW_HEIGHT
+    x=PREVIEW_WINDOW_X,
+    y=PREVIEW_WINDOW_Y,
+    width=PREVIEW_WIDTH,
+    height=PREVIEW_HEIGHT
 )
-preview_config = picam2.create_preview_configuration()
+
+preview_config = picam2.create_preview_configuration(main={"size": (PREVIEW_WIDTH, PREVIEW_HEIGHT)})
 preview_config["transform"] = libcamera.Transform(hflip=1, vflip=1)
 preview_config["format"] = "YUV420"
-#preview_config["size"] = (PREVIEW_WIDTH, PREVIEW_HEIGHT)
-#preview_config["framesize"] = (PREVIEW_WIDTH, PREVIEW_HEIGHT)
 
 picam2.configure(preview_config)
 

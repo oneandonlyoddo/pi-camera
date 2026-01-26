@@ -8,7 +8,6 @@ A simple digital camera implementation using the Raspberry Pi HQ Camera module. 
 - 🖥️ **Fullscreen Preview** - Live camera preview on connected display
 - 📷 **High-Resolution Capture** - Full 4056x3040 resolution (12.3 MP)
 - 🎞️ **Dual Format Saving** - Captures both JPG and RAW (DNG) formats
-- ⚡ **Auto-Focus Support** - Continuous autofocus when available
 - 🕒 **Timestamped Files** - Automatic filename generation with timestamps
 - 📊 **HUD Overlay** - Real-time date and time display on preview
 
@@ -33,9 +32,8 @@ The button uses the internal pull-up resistor, so no external resistor is needed
 ### 1. Clone or Download the Project
 
 ```bash
-cd ~
-git clone <repository-url> pi-camera-ai
-cd pi-camera-ai
+git clone github.com/oneandonlyoddo/pi-camera
+cd pi-camera
 ```
 
 Or download the files directly to your Raspberry Pi.
@@ -44,36 +42,19 @@ Or download the files directly to your Raspberry Pi.
 
 ```bash
 pip install -r requirements.txt
-```
 
-**Note:** These dependencies are Raspberry Pi-specific and must be installed on the Pi itself.
-
-### 3. Enable Camera Interface
-
-Ensure the camera interface is enabled on your Raspberry Pi:
-
+**Note:** These dependencies are Raspberry Pi-specific and must be installed on the Pi itself. On some Raspbian distros these packages are managed and need to be intstalled via apt. 
+for example:
 ```bash
-sudo raspi-config
+sudo apt install python3-picamera2
 ```
-
-Navigate to: **Interface Options** → **Legacy Camera** → **Disable** (use the new camera stack)
-
-Then enable the camera:
-**Interface Options** → **Camera** → **Enable**
-
-Reboot your Pi:
-```bash
-sudo reboot
-```
-
-## Usage
 
 ## Usage
 
 ### Run the Camera
 
 ```bash
-python3 main.py
+python main.py
 ```
 
 Or make it executable and run directly:
@@ -87,7 +68,7 @@ chmod +x main.py
 
 1. The camera will start with a fullscreen preview
 2. Press the hardware button to capture a photo
-3. Photos are saved to `~/Pictures/pi-camera/` by default
+3. Photos are saved to `./DCIM` by default
 4. Each capture creates two files:
    - `IMG_YYYYMMDD_HHMMSS.jpg` - JPEG image
    - `IMG_YYYYMMDD_HHMMSS.dng` - RAW DNG file
@@ -98,7 +79,7 @@ Press `Ctrl+C` to safely shut down the camera.
 
 ## Configuration
 
-All configurable settings are centralized in [`settings.py`](file:///c:/Users/jonas/Workspace/Personal/pi-camera-ai/settings.py). You can customize the camera behavior by editing this file.
+All configurable settings are centralized in `settings.py`. You can customize the camera behavior by editing this file.
 
 ### Key Settings Categories
 
@@ -110,7 +91,7 @@ GPIO_DEBOUNCE_TIME = 0.3          # Button debounce time in seconds
 
 #### File Paths and Naming
 ```python
-PHOTOS_DIR = Path.home() / "Pictures" / "pi-camera"  # Photo save location
+PHOTOS_DIR = "./DCIM"             # Photo save location
 FILENAME_PREFIX = "IMG"           # Prefix for saved image files
 FILENAME_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"  # Timestamp format
 ```
@@ -124,10 +105,6 @@ PREVIEW_HEIGHT = 480
 # Capture resolution (for high-res still images)
 CAPTURE_WIDTH = 4056
 CAPTURE_HEIGHT = 3040
-
-# Fullscreen preview window size
-PREVIEW_WINDOW_X = 0
-PREVIEW_WINDOW_Y = 0
 ```
 
 #### HUD (Heads-Up Display)
@@ -144,7 +121,7 @@ CAPTURE_PAUSE_DURATION = 0.5      # Seconds to pause after capture
 HUD_UPDATE_INTERVAL = 1.0         # Seconds between HUD updates
 ```
 
-See [`settings.py`](file:///c:/Users/jonas/Workspace/Personal/pi-camera-ai/settings.py) for the complete list of configurable parameters.
+See `settings.py`for the complete list of configurable parameters.
 
 ## Troubleshooting
 
@@ -193,10 +170,6 @@ pi-camera/
 ## License
 
 This project is open source and available for personal and educational use.
-
-## Contributing
-
-Feel free to submit issues, fork the repository, and create pull requests for any improvements.
 
 ## Acknowledgments
 

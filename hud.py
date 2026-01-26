@@ -52,7 +52,6 @@ class HUD:
         
         # Get current date and time
         now = datetime.datetime.now()
-        date_str = now.strftime(HUD_DATE_FORMAT)
         time_str = now.strftime(HUD_TIME_FORMAT)
 
         
@@ -64,34 +63,31 @@ class HUD:
             exp_ms = metadata.get("ExposureTime", 0) / 1000 
             gain = metadata.get("AnalogueGain", 0)
             temp = metadata.get("ColourTemperature", 0)
-            meta_str = f"Exp: {exp_ms:.1f}ms | Gain: {gain:.2f}x | WB: {temp:.1f}"
+            meta_str = f"Exp: {exp_ms:.1f}ms | Gain: {gain:.2f}x | WB: {temp:.0f}K"
         except Exception as e:
             meta_str = "Waiting..."
         
         # Try to use a nice font, fall back to default if not available
         try:
-            font_large = ImageFont.truetype(HUD_FONT_PATH_LARGE, HUD_FONT_SIZE_LARGE)
-            font_small = ImageFont.truetype(HUD_FONT_PATH_SMALL, HUD_FONT_SIZE_SMALL)
+            font = ImageFont.truetype(HUD_FONT_PATH, HUD_FONT_SIZE)
         except:
-            font_large = ImageFont.load_default()
-            font_small = ImageFont.load_default()
+            font = ImageFont.load_default()
         
         # Calculate date text dimensions
-        date_bbox = draw.textbbox((0, 0), date_str, font=font_small)
-        date_width = date_bbox[2] - date_bbox[0]
-        date_height = date_bbox[3] - date_bbox[1]
+        time_bbox = draw.textbbox((0, 0), time_str, font=font)
+        time_width = time_bbox[2] - time_bbox[0]
         
-        # Draw date
-        date_x = self.preview_size[0] - date_width - HUD_PADDING
-        date_y = HUD_PADDING
-        draw.text((date_x, date_y), date_str, font=font_small, fill=HUD_COLOR_DATE_TEXT)
+        # Draw time
+        time_x = self.preview_size[0] - time_width - HUD_PADDING
+        time_y = HUD_PADDING
+        draw.text((time_x, time_y), time_str, font=font, fill=HUD_COLOR_TEXT)
         
         # Calculate metadata text dimensions
-        meta_bbox = draw.textbbox((0, 0), meta_str, font=font_small)
+        meta_bbox = draw.textbbox((0, 0), meta_str, font=font)
         meta_height = meta_bbox[3] - meta_bbox[1]
 
         # Draw Metadata
-        draw.text((HUD_PADDING, self.preview_size[1] - meta_height - HUD_PADDING), meta_str, font=font_small, fill=HUD_COLOR_DATE_TEXT )
+        draw.text((HUD_PADDING, self.preview_size[1] - meta_height - HUD_PADDING), meta_str, font=font, fill=HUD_COLOR_TEXT )
         
         # Update the overlay
         if PREVIEW_ROTATE:

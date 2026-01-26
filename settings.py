@@ -33,8 +33,6 @@ CAPTURE_WIDTH = 4056
 CAPTURE_HEIGHT = 3040
 
 # Fullscreen preview window size
-PREVIEW_WINDOW_WIDTH = 800
-PREVIEW_WINDOW_HEIGHT = 480
 PREVIEW_WINDOW_X = 0
 PREVIEW_WINDOW_Y = 0
 
@@ -50,26 +48,18 @@ HUD_UPDATE_INTERVAL = 1.0  # Seconds between HUD updates
 # HUD (HEADS-UP DISPLAY) SETTINGS
 # ============================================================================
 # Font settings
-HUD_FONT_PATH_LARGE = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-HUD_FONT_PATH_SMALL = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-HUD_FONT_SIZE_LARGE = 32  # Font size for time display
-HUD_FONT_SIZE_SMALL = 24  # Font size for date display
+HUD_FONT_PATH = "./assets/fonts/JetBrainsMono-Medium.ttf"
 
 # Date/Time format strings
-HUD_DATE_FORMAT = "%Y-%m-%d"  # Date format (YYYY-MM-DD)
-HUD_TIME_FORMAT = "%H:%M:%S"  # Time format (HH:MM:SS)
+HUD_TIME_FORMAT = "%H:%M | %d/%m/%Y"  # Time format (HH:MM | DD/MM/YYYY)
 
 # HUD positioning
 HUD_PADDING = 20  # Padding from screen edges in pixels
 HUD_BACKGROUND_PADDING = 10  # Padding around text background
-HUD_TEXT_SPACING = 5  # Spacing between time and date text
 
-# HUD colors (RGBA format: Red, Green, Blue, Alpha)
-HUD_COLOR_BACKGROUND = (0, 0, 0, 128)  # Semi-transparent black background
-HUD_COLOR_TIME_TEXT = (255, 255, 255, 255)  # White text for time
-HUD_COLOR_DATE_TEXT = (200, 200, 200, 255)  # Light gray text for date
-HUD_COLOR_SHADOW = (0, 0, 0, 200)  # Black shadow for text
-HUD_SHADOW_OFFSET = 2  # Pixel offset for text shadow
+# HUD colors (RGBA format: Red, Green, Blue, Alpha
+HUD_COLOR_TEXT = (255, 255, 255, 255)  # White text for time
+
 
 # HUD Background Image
 # Path to a transparent PNG to use as the HUD background (optional)

@@ -54,6 +54,19 @@ class HUD:
         now = datetime.datetime.now()
         date_str = now.strftime(HUD_DATE_FORMAT)
         time_str = now.strftime(HUD_TIME_FORMAT)
+
+        
+        
+        # Try getting metadata
+        try:
+            metadata = camera.capture_metadata()
+            # Exposure is in microseconds, convert to ms for display
+            exp_ms = metadata.get("ExposureTime", 0) / 1000 
+            gain = metadata.get("AnalogueGain", 0)
+            temp = metadata.get("ColourTemperature", 0)
+            meta_str = f"Exp: {exp_ms:.1f}ms | Gain: {gain:.2f}x | WB: {temp:.1f}"
+        except Exception as e:
+            meta_str = "Waiting..."
         
         # Try to use a nice font, fall back to default if not available
         try:
@@ -63,51 +76,22 @@ class HUD:
             font_large = ImageFont.load_default()
             font_small = ImageFont.load_default()
         
-        # Calculate time text dimensions and position (top-right corner)
-        time_bbox = draw.textbbox((0, 0), time_str, font=font_large)
-        time_width = time_bbox[2] - time_bbox[0]
-        time_x = self.preview_size[0] - time_width - HUD_PADDING
-        time_y = HUD_PADDING
-        
         # Calculate date text dimensions
         date_bbox = draw.textbbox((0, 0), date_str, font=font_small)
         date_width = date_bbox[2] - date_bbox[0]
         date_height = date_bbox[3] - date_bbox[1]
-        time_height = time_bbox[3] - time_bbox[1]
         
-        # Only draw background rectangle if no custom background image is loaded
-        if not self.background_image:
-            # Calculate background rectangle dimensions to fit both time and date
-            bg_width = max(time_width, date_width) + (HUD_BACKGROUND_PADDING * 2)
-            bg_height = time_height + date_height + (HUD_BACKGROUND_PADDING * 3)
-            bg_x = self.preview_size[0] - bg_width - HUD_PADDING + HUD_BACKGROUND_PADDING
-            bg_y = HUD_PADDING - HUD_BACKGROUND_PADDING
-            
-            # Draw semi-transparent background for better readability
-            draw.rectangle(
-                [bg_x, bg_y, bg_x + bg_width, bg_y + bg_height],
-                fill=HUD_COLOR_BACKGROUND
-            )
-        
-        # Draw time text with shadow for better visibility
-        draw.text(
-            (time_x + HUD_SHADOW_OFFSET, time_y + HUD_SHADOW_OFFSET),
-            time_str,
-            font=font_large,
-            fill=HUD_COLOR_SHADOW
-        )
-        draw.text((time_x, time_y), time_str, font=font_large, fill=HUD_COLOR_TIME_TEXT)
-        
-        # Draw date (smaller text, below time)
+        # Draw date
         date_x = self.preview_size[0] - date_width - HUD_PADDING
-        date_y = time_y + time_height + HUD_TEXT_SPACING
-        draw.text(
-            (date_x + HUD_SHADOW_OFFSET, date_y + HUD_SHADOW_OFFSET),
-            date_str,
-            font=font_small,
-            fill=HUD_COLOR_SHADOW
-        )
+        date_y = HUD_PADDING
         draw.text((date_x, date_y), date_str, font=font_small, fill=HUD_COLOR_DATE_TEXT)
+        
+        # Calculate metadata text dimensions
+        meta_bbox = draw.textbbox((0, 0), meta_str, font=font_small)
+        meta_height = meta_bbox[3] - meta_bbox[1]
+
+        # Draw Metadata
+        draw.text((HUD_PADDING, self.preview_size[1] - meta_height - HUD_PADDING), meta_str, font=font_small, fill=HUD_COLOR_DATE_TEXT )
         
         # Update the overlay
         if PREVIEW_ROTATE:

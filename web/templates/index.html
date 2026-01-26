@@ -1,0 +1,72 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Camera Roll</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Camera Roll</h1>
+    </header>
+    
+    <main id="gallery">
+        <!-- Photos will be loaded here -->
+        <div class="loading">Loading photos...</div>
+    </main>
+
+    <div id="modal" class="modal" onclick="closeModal()">
+        <span class="close">&times;</span>
+        <img class="modal-content" id="modal-img">
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', loadPhotos);
+
+        function loadPhotos() {
+            fetch('/api/photos')
+                .then(response => response.json())
+                .then(files => {
+                    const gallery = document.getElementById('gallery');
+                    gallery.innerHTML = ''; // Clear loading message
+                    
+                    if (files.length === 0) {
+                        gallery.innerHTML = '<div class="empty-state">No photos yet</div>';
+                        return;
+                    }
+
+                    files.forEach(filename => {
+                        const imgContainer = document.createElement('div');
+                        imgContainer.className = 'photo-item';
+                        
+                        const img = document.createElement('img');
+                        img.src = `/dcim/${filename}`;
+                        img.alt = filename;
+                        img.loading = 'lazy'; // Lazy load images
+                        img.onclick = () => openModal(img.src);
+                        
+                        imgContainer.appendChild(img);
+                        gallery.appendChild(imgContainer);
+                    });
+                })
+                .catch(err => {
+                    console.error('Error loading photos:', err);
+                    document.getElementById('gallery').innerHTML = '<div class="error">Failed to load photos</div>';
+                });
+        }
+
+        function openModal(src) {
+            const modal = document.getElementById('modal');
+            const modalImg = document.getElementById('modal-img');
+            modal.style.display = "flex";
+            modalImg.src = src;
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = "none";
+        }
+    </script>
+</body>
+</html>

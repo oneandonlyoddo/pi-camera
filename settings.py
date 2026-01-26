@@ -15,7 +15,7 @@ GPIO_CONNECTED = False
 # ============================================================================
 # FILE PATHS
 # ============================================================================
-PHOTOS_DIR = Path.home() / "Pictures" / "pi-camera"  # Directory to save captured photos
+PHOTOS_DIR = "../DCIM"  # Directory to save captured photos
 FILENAME_PREFIX = "IMG"  # Prefix for saved image files
 FILENAME_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"  # Timestamp format for filenames
 JPG_EXTENSION = ".jpg"  # JPEG file extension

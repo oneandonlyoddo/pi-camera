@@ -9,3 +9,6 @@ Pillow>=12.1.0
 # Web Interface
 flask>=3.0.0
 
+# Development
+opencv-python
+

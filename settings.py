@@ -15,7 +15,7 @@ GPIO_CONNECTED = False
 # ============================================================================
 # FILE PATHS
 # ============================================================================
-PHOTOS_DIR = "../DCIM"  # Directory to save captured photos
+PHOTOS_DIR = "./DCIM"  # Directory to save captured photos
 FILENAME_PREFIX = "IMG"  # Prefix for saved image files
 FILENAME_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"  # Timestamp format for filenames
 JPG_EXTENSION = ".jpg"  # JPEG file extension
@@ -36,7 +36,7 @@ CAPTURE_HEIGHT = 3040
 PREVIEW_WINDOW_X = 0
 PREVIEW_WINDOW_Y = 0
 
-PREVIEW_ROTATE = True
+PREVIEW_ROTATE = False
 
 # ============================================================================
 # CAMERA TIMING

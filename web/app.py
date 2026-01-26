@@ -11,7 +11,7 @@ from settings import PHOTOS_DIR, JPG_EXTENSION
 app = Flask(__name__)
 
 # Ensure the PHOTOS_DIR exists
-photos_path = Path(PHOTOS_DIR)
+photos_path = Path("../" + PHOTOS_DIR)
 # Only create if it doesn't default to a weird path, but settings.py sets it to ~/DCIM.
 # We'll rely on the main camera app or this app to ensure it exists.
 if not photos_path.exists():

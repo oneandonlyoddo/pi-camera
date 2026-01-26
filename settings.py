@@ -49,16 +49,17 @@ HUD_UPDATE_INTERVAL = 1.0  # Seconds between HUD updates
 # ============================================================================
 # Font settings
 HUD_FONT_PATH = "./assets/fonts/JetBrainsMono-Medium.ttf"
+HUD_FONT_SIZE = 24
 
 # Date/Time format strings
-HUD_TIME_FORMAT = "%H:%M | %d/%m/%Y"  # Time format (HH:MM | DD/MM/YYYY)
+HUD_TIME_FORMAT = "%H:%M - %d/%m/%Y"  # Time format (HH:MM | DD/MM/YYYY)
 
 # HUD positioning
-HUD_PADDING = 20  # Padding from screen edges in pixels
-HUD_BACKGROUND_PADDING = 10  # Padding around text background
+HUD_PADDING_W = 6  # Padding from screen edges in pixels
+HUD_PADDING_H = 6
 
 # HUD colors (RGBA format: Red, Green, Blue, Alpha
-HUD_COLOR_TEXT = (255, 255, 255, 255)  # White text for time
+HUD_COLOR_TEXT = (0, 0, 0, 255)  # White text for time
 
 
 # HUD Background Image

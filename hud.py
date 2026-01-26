@@ -63,7 +63,7 @@ class HUD:
             exp_ms = metadata.get("ExposureTime", 0) / 1000 
             gain = metadata.get("AnalogueGain", 0)
             temp = metadata.get("ColourTemperature", 0)
-            meta_str = f"Exp: {exp_ms:.1f}ms | Gain: {gain:.2f}x | WB: {temp:.0f}K"
+            meta_str = f"Exp: {exp_ms:.1f}ms - Gain: {gain:.2f}x - WB: {temp:.0f}K"
         except Exception as e:
             meta_str = "Waiting..."
         
@@ -78,8 +78,8 @@ class HUD:
         time_width = time_bbox[2] - time_bbox[0]
         
         # Draw time
-        time_x = self.preview_size[0] - time_width - HUD_PADDING
-        time_y = HUD_PADDING
+        time_x = self.preview_size[0] - time_width - HUD_PADDING_W
+        time_y = HUD_PADDING_H
         draw.text((time_x, time_y), time_str, font=font, fill=HUD_COLOR_TEXT)
         
         # Calculate metadata text dimensions
@@ -87,7 +87,7 @@ class HUD:
         meta_height = meta_bbox[3] - meta_bbox[1]
 
         # Draw Metadata
-        draw.text((HUD_PADDING, self.preview_size[1] - meta_height - HUD_PADDING), meta_str, font=font, fill=HUD_COLOR_TEXT )
+        draw.text((HUD_PADDING_W, self.preview_size[1] - meta_height - HUD_PADDING_H), meta_str, font=font, fill=HUD_COLOR_TEXT )
         
         # Update the overlay
         if PREVIEW_ROTATE:

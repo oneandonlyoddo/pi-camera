@@ -3,10 +3,11 @@ import os
 import sys
 from pathlib import Path
 from flask import Flask, render_template, send_from_directory, jsonify, request
+from PIL import Image
 
 # Add parent directory to path to allow importing settings
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from settings import PHOTOS_DIR, THUMBNAILS_DIR, JPG_EXTENSION
+from settings import PHOTOS_DIR, THUMBNAILS_DIR, JPG_EXTENSION, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, THUMBNAIL_QUALITY
 
 app = Flask(__name__)
 camera_state = None  # Global to hold the shared state
@@ -18,6 +19,44 @@ def init_app(shared_state):
     """
     global camera_state
     camera_state = shared_state
+
+def generate_thumbnail_if_missing(filename):
+    """
+    Generate a thumbnail for an image if it doesn't exist yet.
+
+    Args:
+        filename: Name of the JPG file
+
+    Returns:
+        Path to the thumbnail file
+    """
+    thumb_path = thumbnails_path / filename
+
+    # If thumbnail already exists, return it
+    if thumb_path.exists():
+        return thumb_path
+
+    # Generate thumbnail from original image
+    original_path = photos_path / filename
+    if not original_path.exists():
+        raise FileNotFoundError(f"Original image not found: {filename}")
+
+    try:
+        # Open the original image
+        img = Image.open(original_path)
+
+        # Create thumbnail (maintains aspect ratio)
+        img.thumbnail((THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT), Image.Resampling.LANCZOS)
+
+        # Save thumbnail
+        img.save(thumb_path, "JPEG", quality=THUMBNAIL_QUALITY)
+
+        print(f"Generated thumbnail on-demand: {thumb_path}")
+        return thumb_path
+
+    except Exception as e:
+        print(f"Error generating thumbnail for {filename}: {e}")
+        raise
 
 # Ensure the PHOTOS_DIR and THUMBNAILS_DIR exist
 # Resolve paths relative to the project root (parent of web/ directory)
@@ -78,12 +117,23 @@ def serve_photo(filename):
 
 @app.route('/dcim/thumbs/<path:filename>')
 def serve_thumbnail(filename):
-    """Serve a thumbnail from the thumbnails directory with caching headers."""
-    response = send_from_directory(thumbnails_path, filename)
-    # Cache thumbnails for 1 year (they never change once created)
-    response.cache_control.max_age = 31536000
-    response.cache_control.public = True
-    return response
+    """Serve a thumbnail from the thumbnails directory with caching headers.
+    Generates thumbnail on-demand if it doesn't exist yet."""
+    try:
+        # Generate thumbnail if it doesn't exist
+        generate_thumbnail_if_missing(filename)
+
+        # Serve the thumbnail
+        response = send_from_directory(thumbnails_path, filename)
+        # Cache thumbnails for 1 year (they never change once created)
+        response.cache_control.max_age = 31536000
+        response.cache_control.public = True
+        return response
+    except FileNotFoundError:
+        return jsonify({"error": "Image not found"}), 404
+    except Exception as e:
+        print(f"Error serving thumbnail {filename}: {e}")
+        return jsonify({"error": "Failed to generate thumbnail"}), 500
 
 @app.route('/api/trigger', methods=['POST'])
 def trigger_shutter():

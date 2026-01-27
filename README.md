@@ -15,6 +15,7 @@ When you start the application, both the camera interface (with fullscreen previ
 
 ### Camera Features
 - 📸 **Hardware Shutter Button** - Physical button trigger via GPIO
+- 👆 **Touchscreen Support** - Touch anywhere on screen to capture (optional, requires touchscreen display)
 - 🖥️ **Fullscreen Preview** - Live camera preview on connected display
 - 📷 **High-Resolution Capture** - Full 4056x3040 resolution (12.3 MP)
 - 🎞️ **Dual Format Saving** - Captures both JPG and RAW (DNG) formats
@@ -89,7 +90,10 @@ chmod +x main.py
 ### Taking Photos
 
 1. The camera will start with a fullscreen preview
-2. Press the hardware button to capture a photo
+2. Capture a photo using any of these methods:
+   - **Hardware Button**: Press the physical GPIO button
+   - **Touchscreen**: Touch anywhere on the screen (if touchscreen is connected)
+   - **Web Interface**: Use the shutter button in the settings tab
 3. Photos are saved to `./DCIM` by default
 4. Each capture creates two files:
    - `IMG_YYYYMMDD_HHMMSS.jpg` - JPEG image
@@ -135,6 +139,11 @@ All configurable settings are centralized in `settings.py`. You can customize th
 GPIO_BUTTON_PIN = 17              # GPIO pin for shutter button (BCM numbering)
 GPIO_DEBOUNCE_TIME = 0.3          # Button debounce time in seconds
 GPIO_CONNECTED = False            # Set to True when hardware button is wired up
+```
+
+#### Touchscreen Configuration
+```python
+TOUCHSCREEN_ENABLED = True        # Enable touchscreen shutter trigger (requires evdev)
 ```
 
 #### File Paths and Naming
@@ -242,6 +251,28 @@ Then log out and back in.
 ### Preview Not Showing
 
 Ensure you have a display connected via HDMI or DSI. The preview requires a graphical environment.
+
+### Touchscreen Not Working
+
+If touchscreen capture doesn't work:
+
+1. **Check evdev is installed**:
+   ```bash
+   pip install evdev
+   ```
+
+2. **List available input devices**:
+   ```bash
+   python -c "from evdev import list_devices, InputDevice; [print(f'{d}: {InputDevice(d).name}') for d in list_devices()]"
+   ```
+
+3. **Check permissions**: Your user may need to be in the `input` group:
+   ```bash
+   sudo usermod -a -G input $USER
+   ```
+   Then log out and back in.
+
+4. **Disable in settings**: Set `TOUCHSCREEN_ENABLED = False` in `settings.py` if you don't have a touchscreen
 
 ## API Reference
 

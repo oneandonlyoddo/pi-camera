@@ -13,6 +13,11 @@ GPIO_DEBOUNCE_TIME = 0.3  # Button debounce time in seconds
 GPIO_CONNECTED = False
 
 # ============================================================================
+# TOUCHSCREEN CONFIGURATION
+# ============================================================================
+TOUCHSCREEN_ENABLED = True  # Enable touchscreen shutter trigger (requires evdev)
+
+# ============================================================================
 # FILE PATHS
 # ============================================================================
 PHOTOS_DIR = "DCIM"  # Directory to save captured photos

@@ -9,6 +9,14 @@ from PIL import Image
 from settings import *
 from hud import HUD
 
+# Optional: Import touchscreen support
+try:
+    from touchscreen import TouchScreen
+    TOUCHSCREEN_AVAILABLE = True
+except ImportError:
+    TOUCHSCREEN_AVAILABLE = False
+    print("Note: evdev not available - touchscreen support disabled")
+
 class DigitalCamera:
     """Digital camera controller for Raspberry Pi HQ Camera module."""
     
@@ -34,6 +42,16 @@ class DigitalCamera:
         # Track last applied settings to avoid unnecessary updates
         self._last_gain = None
         self._last_colour_temp = None
+
+        # Initialize touchscreen support (optional)
+        self.touchscreen = None
+        if TOUCHSCREEN_ENABLED and TOUCHSCREEN_AVAILABLE:
+            try:
+                self.touchscreen = TouchScreen(on_touch_callback=self.touchscreen_pressed)
+            except Exception as e:
+                print(f"Could not initialize touchscreen: {e}")
+        elif TOUCHSCREEN_ENABLED and not TOUCHSCREEN_AVAILABLE:
+            print("Touchscreen enabled in settings but evdev not available")
 
         # Create photos and thumbnails directories if they don't exist
         self.photos_dir.mkdir(parents=True, exist_ok=True)
@@ -93,10 +111,18 @@ class DigitalCamera:
 
     def button_pressed(self):
         """
-        Callback function triggered when shutter button is pressed.
+        Callback function triggered when hardware button is pressed.
         """
         if self.running and GPIO_CONNECTED:
             print("Shutter button pressed - capturing image...")
+            self.capture_photo()
+
+    def touchscreen_pressed(self):
+        """
+        Callback function triggered when touchscreen is touched.
+        """
+        if self.running:
+            print("Touchscreen touched - capturing image...")
             self.capture_photo()
             
     def capture_photo(self):
@@ -155,7 +181,11 @@ class DigitalCamera:
             
             self.setup_camera()
             self.running = True
-            
+
+            # Start touchscreen monitoring if available
+            if self.touchscreen:
+                self.touchscreen.start()
+
             # Keep the program running and update HUD
             while self.running:
                 # Check for web shutter request
@@ -214,10 +244,19 @@ class DigitalCamera:
     def cleanup(self):
         """Clean up resources on exit."""
         self.running = False
+
+        # Stop touchscreen monitoring
+        if self.touchscreen:
+            self.touchscreen.cleanup()
+
+        # Stop camera
         if self.camera:
             self.camera.stop_preview()
             self.camera.stop()
             self.camera.close()
+
+        # Close button
         self.button.close()
+
         print("Camera stopped. Goodbye!")
 

@@ -1,15 +1,37 @@
 # Raspberry Pi Zero Digital Camera
 
-A simple digital camera implementation using the Raspberry Pi HQ Camera module. This project turns your Raspberry Pi into a fully functional digital camera with hardware button control, fullscreen preview, and high-quality image capture in both JPG and RAW formats.
+A digital camera implementation using the Raspberry Pi HQ Camera module with integrated web interface. This project turns your Raspberry Pi into a fully functional digital camera with hardware button control, fullscreen preview, remote web access, and high-quality image capture in both JPG and RAW formats.
+
+## Architecture
+
+This application uses a multi-threaded architecture:
+- **Main Thread**: Runs the camera preview and capture loop
+- **Background Thread**: Runs a Flask web server for remote access
+- **Shared State**: Thread-safe communication between camera and web interface
+
+When you start the application, both the camera interface (with fullscreen preview on the Pi's display) and the web server (accessible at `http://<pi-ip>:5000`) run simultaneously. You can capture photos using either the physical button or the web interface.
 
 ## Features
 
+### Camera Features
 - 📸 **Hardware Shutter Button** - Physical button trigger via GPIO
 - 🖥️ **Fullscreen Preview** - Live camera preview on connected display
 - 📷 **High-Resolution Capture** - Full 4056x3040 resolution (12.3 MP)
 - 🎞️ **Dual Format Saving** - Captures both JPG and RAW (DNG) formats
 - 🕒 **Timestamped Files** - Automatic filename generation with timestamps
-- 📊 **HUD Overlay** - Real-time date and time display on preview
+- 📊 **HUD Overlay** - Real-time display of date, time, exposure, gain, and white balance
+
+### Web Interface Features
+- 🌐 **Remote Web Access** - Control camera from any device on your network
+- 🖼️ **Photo Gallery** - Browse captured images in a responsive grid layout
+- 🔍 **Lightbox View** - Full-screen image preview with modal viewer
+- 🎮 **Remote Shutter** - Trigger camera capture from the web interface
+- ⚙️ **Live Settings Control** - Adjust analogue gain and color temperature remotely
+- 📱 **Mobile Friendly** - Responsive design optimized for phones and tablets
+
+### Development Features
+- 💻 **Webcam Fallback** - Development mode using standard webcams for testing without Pi hardware
+- 🔄 **Thread-Safe Architecture** - Separate threads for camera and web server with shared state management
 
 ## Hardware Requirements
 
@@ -73,6 +95,31 @@ chmod +x main.py
    - `IMG_YYYYMMDD_HHMMSS.jpg` - JPEG image
    - `IMG_YYYYMMDD_HHMMSS.dng` - RAW DNG file
 
+### Using the Web Interface
+
+Once the camera is running, you can access the web interface from any device on the same network:
+
+1. **Find your Pi's IP address**:
+   ```bash
+   hostname -I
+   ```
+
+2. **Open a web browser** and navigate to:
+   ```
+   http://<pi-ip-address>:5000
+   ```
+   For example: `http://192.168.1.100:5000`
+
+3. **Gallery Tab**: View all captured photos in a responsive grid
+   - Tap any thumbnail to view full-screen
+   - Photos are sorted with newest first
+   - Lazy loading for better performance
+
+4. **Settings Tab**: Remote camera control
+   - **Shutter Button**: Capture photos remotely
+   - **Analogue Gain**: Adjust sensor gain (0 = Auto, up to 16x)
+   - **Color Temperature**: Set white balance (0 = Auto, up to 8000K)
+
 ### Exit the Application
 
 Press `Ctrl+C` to safely shut down the camera.
@@ -85,8 +132,9 @@ All configurable settings are centralized in `settings.py`. You can customize th
 
 #### GPIO Configuration
 ```python
-GPIO_BUTTON_PIN = 26              # GPIO pin for shutter button (BCM numbering)
+GPIO_BUTTON_PIN = 17              # GPIO pin for shutter button (BCM numbering)
 GPIO_DEBOUNCE_TIME = 0.3          # Button debounce time in seconds
+GPIO_CONNECTED = False            # Set to True when hardware button is wired up
 ```
 
 #### File Paths and Naming
@@ -109,10 +157,16 @@ CAPTURE_HEIGHT = 3040
 
 #### HUD (Heads-Up Display)
 ```python
-HUD_FONT_SIZE = 24                # Font size
-HUD_PADDING_W = 6                 # Horizontal padding
-HUD_PADDING_H = 6                 # Vertical padding
-HUD_COLOR_TEXT = (0, 0, 0, 255)   # Black text (RGBA)
+HUD_FONT_SIZE = 24                           # Font size
+HUD_PADDING_W = 6                            # Horizontal padding
+HUD_PADDING_H = 6                            # Vertical padding
+HUD_COLOR_TEXT = (0, 0, 0, 255)              # Black text (RGBA)
+HUD_BACKGROUND_IMAGE_PATH = "./assets/hud_grid.png"  # Optional background image
+```
+
+#### Preview Settings
+```python
+PREVIEW_ROTATE = False            # Set to True to rotate preview 180 degrees
 ```
 
 #### Timing
@@ -122,6 +176,41 @@ HUD_UPDATE_INTERVAL = 1.0         # Seconds between HUD updates
 ```
 
 See `settings.py`for the complete list of configurable parameters.
+
+## Development Mode
+
+The project includes a webcam fallback mode for development and testing on non-Raspberry Pi systems.
+
+### Using Webcam Mode
+
+If `picamera2` dependencies are not available, the application automatically falls back to webcam mode:
+
+```bash
+# On Windows, macOS, or Linux without picamera2
+python main.py
+```
+
+**Webcam Mode Features:**
+- Uses OpenCV to capture from your default webcam (camera index 0)
+- Displays preview in a window with HUD overlay
+- Press **SPACE** to capture photos
+- Press **Q** to quit
+- Web interface works the same as Pi mode
+- Photos saved as JPG only (no RAW in webcam mode)
+
+**Controls in Webcam Mode:**
+- Physical button: Not available
+- Remote shutter: Works via web interface
+- Settings: Gain control has limited effect (webcam hardware dependent)
+
+### Installing Development Dependencies
+
+```bash
+# Install OpenCV for webcam support
+pip install opencv-python
+```
+
+This allows you to develop and test the web interface, photo gallery, and application logic without needing Raspberry Pi hardware.
 
 ## Troubleshooting
 
@@ -154,17 +243,89 @@ Then log out and back in.
 
 Ensure you have a display connected via HDMI or DSI. The preview requires a graphical environment.
 
+## API Reference
+
+The Flask web server provides the following REST API endpoints:
+
+### GET /
+Returns the main web interface (gallery and settings UI).
+
+### GET /api/photos
+Returns a JSON array of photo filenames sorted by date (newest first).
+
+**Response:**
+```json
+["IMG_20260127_123456.jpg", "IMG_20260127_120000.jpg"]
+```
+
+### GET /dcim/<filename>
+Serves a photo file from the DCIM directory.
+
+**Example:** `/dcim/IMG_20260127_123456.jpg`
+
+### POST /api/trigger
+Triggers the camera shutter to capture a photo.
+
+**Response:**
+```json
+{"status": "ok", "message": "Shutter requested"}
+```
+
+### GET /api/settings
+Returns current camera settings.
+
+**Response:**
+```json
+{
+  "gain": 0.0,
+  "color_temp": 0
+}
+```
+
+### POST /api/settings
+Updates camera settings. Accepts JSON payload with optional `gain` and `color_temp` fields.
+
+**Request:**
+```json
+{
+  "gain": 2.5,
+  "color_temp": 5000
+}
+```
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "gain": 2.5,
+  "color_temp": 5000
+}
+```
+
+**Note:** Set gain or color_temp to 0 for automatic mode.
+
 ## File Structure
 
 ```
 pi-camera/
-├── main.py            # Application entry point
-├── digital_camera.py  # Camera controller logic
-├── hud.py             # HUD overlay implementation
-├── settings.py        # Configuration settings
-├── assets/            # Resources (fonts, images)
-├── requirements.txt   # Python dependencies
-└── README.md          # This file
+├── main.py              # Application entry point and thread orchestration
+├── digital_camera.py    # Raspberry Pi camera controller (Picamera2)
+├── webcam_camera.py     # Webcam fallback implementation (OpenCV)
+├── shared_state.py      # Thread-safe state management
+├── hud.py               # HUD overlay implementation
+├── settings.py          # Configuration settings
+├── web/                 # Web interface
+│   ├── app.py           # Flask application and API routes
+│   ├── static/          # CSS and static assets
+│   │   └── styles.css   # Web interface styles
+│   └── templates/       # HTML templates
+│       └── index.html   # Gallery and settings UI
+├── assets/              # Resources (fonts, images)
+│   ├── fonts/           # HUD fonts
+│   └── hud_grid.png     # Optional HUD background
+├── DCIM/                # Photo storage (created automatically)
+├── requirements.txt     # Python dependencies
+└── README.md            # This file
 ```
 
 ## License

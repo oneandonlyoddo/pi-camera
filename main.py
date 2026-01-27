@@ -2,8 +2,9 @@
 
 """
 Raspberry Pi Zero Digital Camera
-A simple digital camera implementation using the Raspberry Pi HQ Camera module.
-Provides fullscreen preview, hardware button trigger, and saves images in JPG and RAW formats.
+A digital camera implementation using the Raspberry Pi HQ Camera module with web interface.
+Provides fullscreen preview, hardware button trigger, web-based gallery, and remote control.
+Saves images in JPG and RAW formats. Includes a Flask web server for remote access and control.
 """
 
 try:

@@ -36,8 +36,9 @@ class HUD:
         
     def update(self, camera):
         """
-        Update the HUD overlay with current time and date.
-        
+        Update the HUD overlay with current time, date, and camera metadata.
+        Displays exposure time, analogue gain, and white balance temperature.
+
         Args:
             camera: Picamera2 instance to set the overlay on
         """

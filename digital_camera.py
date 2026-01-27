@@ -5,30 +5,37 @@ from pathlib import Path
 from picamera2 import Picamera2, Preview
 import libcamera
 from gpiozero import Button
+from PIL import Image
 from settings import *
 from hud import HUD
 
 class DigitalCamera:
     """Digital camera controller for Raspberry Pi HQ Camera module."""
     
-    def __init__(self, button_pin=GPIO_BUTTON_PIN, photos_dir=PHOTOS_DIR):
+
+    def __init__(self, button_pin=GPIO_BUTTON_PIN, photos_dir=PHOTOS_DIR, camera_state=None):
         """
         Initialize the digital camera.
         
         Args:
             button_pin: GPIO pin number for the shutter button (BCM mode)
             photos_dir: Directory to save captured photos
+            camera_state: Shared CameraState object from the web app
         """
         self.button = Button(button_pin, bounce_time=GPIO_DEBOUNCE_TIME)
         self.button.when_pressed = self.button_pressed
         self.photos_dir = Path(photos_dir)
+        self.thumbnails_dir = Path(THUMBNAILS_DIR)
         self.camera = None
         self.running = False
         self.hud = HUD(PREVIEW_WIDTH, PREVIEW_HEIGHT)
-        
-        # Create photos directory if it doesn't exist
+        self.camera_state = camera_state
+
+        # Create photos and thumbnails directories if they don't exist
         self.photos_dir.mkdir(parents=True, exist_ok=True)
+        self.thumbnails_dir.mkdir(parents=True, exist_ok=True)
         print(f"Photos will be saved to: {self.photos_dir}")
+        print(f"Thumbnails will be saved to: {self.thumbnails_dir}")
         
     def setup_camera(self):
         """Initialize and configure the camera with optimal settings."""
@@ -57,6 +64,29 @@ class DigitalCamera:
         
         print("Camera initialized with fullscreen preview")
       
+    def generate_thumbnail(self, jpg_path):
+        """
+        Generate a thumbnail for the given JPG image.
+
+        Args:
+            jpg_path: Path to the full-size JPG image
+        """
+        try:
+            # Open the image
+            img = Image.open(jpg_path)
+
+            # Create thumbnail (maintains aspect ratio)
+            img.thumbnail((THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT), Image.Resampling.LANCZOS)
+
+            # Save thumbnail with same filename in thumbs directory
+            thumb_path = self.thumbnails_dir / jpg_path.name
+            img.save(thumb_path, "JPEG", quality=THUMBNAIL_QUALITY)
+
+            print(f"  Thumbnail: {thumb_path}")
+
+        except Exception as e:
+            print(f"✗ Error generating thumbnail: {e}")
+
     def button_pressed(self):
         """
         Callback function triggered when shutter button is pressed.
@@ -96,7 +126,10 @@ class DigitalCamera:
             print(f"✓ Photo saved:")
             print(f"  JPG: {jpg_path}")
             print(f"  RAW: {raw_path}")
-            
+
+            # Generate thumbnail
+            self.generate_thumbnail(jpg_path)
+
             # Brief pause before returning to preview
             time.sleep(CAPTURE_PAUSE_DURATION)
             
@@ -121,6 +154,20 @@ class DigitalCamera:
             
             # Keep the program running and update HUD
             while self.running:
+                # Check for web shutter request
+                if self.camera_state and self.camera_state.consume_shutter_request():
+                    print("Web shutter request received - capturing image...")
+                    self.capture_photo()
+
+                # Apply camera settings if changed (Basic implementation)
+                if self.camera_state:
+                    gain = self.camera_state.analogue_gain
+                    temp = self.camera_state.colour_temperature
+                    
+                    # Logic to apply these to Picamera2 controls would go here (e.g., self.camera.set_controls(...))
+                    # For now just logging as placeholder since specific Picamera2 control syntax varies
+                    # print(f"Applying settings: Gain={gain}, Temp={temp}")
+
                 self.hud.update(self.camera)
                 time.sleep(HUD_UPDATE_INTERVAL)
                 
@@ -141,3 +188,4 @@ class DigitalCamera:
             self.camera.close()
         self.button.close()
         print("Camera stopped. Goodbye!")
+

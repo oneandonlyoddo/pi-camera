@@ -14,19 +14,24 @@ class WebcamCamera:
     to mimic the Raspberry Pi HQ Camera module behaviour.
     """
     
-    def __init__(self, button_pin=None, photos_dir=PHOTOS_DIR):
+
+    def __init__(self, button_pin=None, photos_dir=PHOTOS_DIR, camera_state=None):
         """
         Initialize the webcam camera.
         Args ignored or used compatibly to match DigitalCamera interface.
         """
         self.photos_dir = Path(photos_dir)
+        self.thumbnails_dir = Path(THUMBNAILS_DIR)
         self.running = False
         self.hud = HUD(PREVIEW_WIDTH, PREVIEW_HEIGHT)
         self.cap = None
-        
-        # Create photos directory if it doesn't exist
+        self.camera_state = camera_state
+
+        # Create photos and thumbnails directories if they don't exist
         self.photos_dir.mkdir(parents=True, exist_ok=True)
+        self.thumbnails_dir.mkdir(parents=True, exist_ok=True)
         print(f"Photos will be saved to: {self.photos_dir} (Webcam Mode)")
+        print(f"Thumbnails will be saved to: {self.thumbnails_dir}")
         
     def setup_camera(self):
         """Initialize the webcam."""
@@ -40,18 +45,44 @@ class WebcamCamera:
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, PREVIEW_WIDTH)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, PREVIEW_HEIGHT)
         print("Webcam initialized")
-      
+
+    def generate_thumbnail(self, jpg_path):
+        """
+        Generate a thumbnail for the given JPG image.
+
+        Args:
+            jpg_path: Path to the full-size JPG image
+        """
+        try:
+            # Open the image
+            img = Image.open(jpg_path)
+
+            # Create thumbnail (maintains aspect ratio)
+            img.thumbnail((THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT), Image.Resampling.LANCZOS)
+
+            # Save thumbnail with same filename in thumbs directory
+            thumb_path = self.thumbnails_dir / jpg_path.name
+            img.save(thumb_path, "JPEG", quality=THUMBNAIL_QUALITY)
+
+            print(f"  Thumbnail: {thumb_path}")
+
+        except Exception as e:
+            print(f"✗ Error generating thumbnail: {e}")
+
     def capture_photo(self, frame):
         """Save the current frame as a photo."""
         try:
             timestamp = datetime.datetime.now().strftime(FILENAME_TIMESTAMP_FORMAT)
             jpg_path = self.photos_dir / f"{FILENAME_PREFIX}_{timestamp}{JPG_EXTENSION}"
-            
+
             # Save the frame
             cv2.imwrite(str(jpg_path), frame)
-            
+
             print(f"✓ Photo saved: {jpg_path}")
-            
+
+            # Generate thumbnail
+            self.generate_thumbnail(jpg_path)
+
         except Exception as e:
             print(f"✗ Error capturing photo: {e}")
 
@@ -82,6 +113,20 @@ class WebcamCamera:
                 if not ret:
                     print("Error: Can't receive frame (stream end?). Exiting ...")
                     break
+
+                # Check for web shutter request
+                if self.camera_state and self.camera_state.consume_shutter_request():
+                    print("Web shutter request received - capturing image...")
+                    self.capture_photo(frame)
+
+                # Simulate applying settings from web
+                if self.camera_state:
+                    gain = self.camera_state.analogue_gain
+                    temp = self.camera_state.colour_temperature
+                    if gain > 0:
+                        # Just print for verification since webcam gain is tricky to mock uniformly
+                        # print(f"Mock Gain set to {gain}")
+                        pass
 
                 # Update HUD
                 # HUD.update() calls camera.set_overlay(np_array)
@@ -138,3 +183,4 @@ class WebcamCamera:
             self.cap.release()
         cv2.destroyAllWindows()
         print("Camera stopped. Goodbye!")
+

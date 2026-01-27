@@ -8,18 +8,26 @@ from pathlib import Path
 # ============================================================================
 # GPIO CONFIGURATION
 # ============================================================================
-GPIO_BUTTON_PIN = 26  # GPIO pin for shutter button (BCM numbering)
+GPIO_BUTTON_PIN = 17  # GPIO pin for shutter button (BCM numbering)
 GPIO_DEBOUNCE_TIME = 0.3  # Button debounce time in seconds
 GPIO_CONNECTED = False
 
 # ============================================================================
 # FILE PATHS
 # ============================================================================
-PHOTOS_DIR = "./DCIM"  # Directory to save captured photos
+PHOTOS_DIR = "DCIM"  # Directory to save captured photos
+THUMBNAILS_DIR = "DCIM/thumbs"  # Directory for thumbnail cache
 FILENAME_PREFIX = "IMG"  # Prefix for saved image files
 FILENAME_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"  # Timestamp format for filenames
 JPG_EXTENSION = ".jpg"  # JPEG file extension
 RAW_EXTENSION = ".dng"  # RAW (DNG) file extension
+
+# ============================================================================
+# THUMBNAIL SETTINGS
+# ============================================================================
+THUMBNAIL_WIDTH = 300  # Thumbnail width in pixels
+THUMBNAIL_HEIGHT = 225  # Thumbnail height in pixels (maintains 4:3 aspect ratio)
+THUMBNAIL_QUALITY = 85  # JPEG quality for thumbnails (1-100)
 
 # ============================================================================
 # CAMERA RESOLUTION SETTINGS

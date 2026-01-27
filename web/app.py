@@ -20,15 +20,13 @@ def init_app(shared_state):
     camera_state = shared_state
 
 # Ensure the PHOTOS_DIR and THUMBNAILS_DIR exist
-photos_path = Path("../" + PHOTOS_DIR)
-thumbnails_path = Path("../" + THUMBNAILS_DIR)
+# Resolve paths relative to the project root (parent of web/ directory)
+project_root = Path(__file__).parent.parent.resolve()
+photos_path = (project_root / PHOTOS_DIR).resolve()
+thumbnails_path = (project_root / THUMBNAILS_DIR).resolve()
 
-# Ensure photos_path is absolute if possible, or relative to cwd
-if not photos_path.is_absolute():
-    # If running from pi-camera, Path("DCIM") -> ./DCIM
-    # settings.py defines it as Path.home() / "DCIM" usually, which IS absolute.
-    # But if modified, let's just trust it.
-    pass
+print(f"Flask serving photos from: {photos_path}")
+print(f"Flask serving thumbnails from: {thumbnails_path}")
 
 if not photos_path.exists():
     try:
@@ -52,16 +50,21 @@ def get_photos():
     """Return a list of photo filenames sorted by date (newest first)."""
     try:
         if not photos_path.exists():
+            print(f"Warning: Photos path does not exist: {photos_path}")
             return jsonify([])
-            
+
         # Get all JPG files
         files = list(photos_path.glob(f"*{JPG_EXTENSION}"))
         # Sort by modification time (newest first)
         files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
-        
+
+        filenames = [f.name for f in files]
+        print(f"Serving {len(filenames)} photos from {photos_path}")
+
         # Return list of filenames
-        return jsonify([f.name for f in files])
+        return jsonify(filenames)
     except Exception as e:
+        print(f"Error in get_photos: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/dcim/<path:filename>')

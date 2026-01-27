@@ -31,6 +31,10 @@ class DigitalCamera:
         self.hud = HUD(PREVIEW_WIDTH, PREVIEW_HEIGHT)
         self.camera_state = camera_state
 
+        # Track last applied settings to avoid unnecessary updates
+        self._last_gain = None
+        self._last_colour_temp = None
+
         # Create photos and thumbnails directories if they don't exist
         self.photos_dir.mkdir(parents=True, exist_ok=True)
         self.thumbnails_dir.mkdir(parents=True, exist_ok=True)
@@ -159,14 +163,42 @@ class DigitalCamera:
                     print("Web shutter request received - capturing image...")
                     self.capture_photo()
 
-                # Apply camera settings if changed (Basic implementation)
+                # Apply camera settings if changed
                 if self.camera_state:
                     gain = self.camera_state.analogue_gain
                     temp = self.camera_state.colour_temperature
-                    
-                    # Logic to apply these to Picamera2 controls would go here (e.g., self.camera.set_controls(...))
-                    # For now just logging as placeholder since specific Picamera2 control syntax varies
-                    # print(f"Applying settings: Gain={gain}, Temp={temp}")
+
+                    # Only apply settings if they've changed
+                    controls = {}
+
+                    if gain != self._last_gain:
+                        if gain == 0.0:
+                            # Auto gain - use AeEnable
+                            controls["AeEnable"] = True
+                        else:
+                            # Manual gain - disable auto exposure and set gain
+                            controls["AeEnable"] = False
+                            controls["AnalogueGain"] = float(gain)
+                        self._last_gain = gain
+                        print(f"Applied analogue gain: {'Auto' if gain == 0.0 else gain}")
+
+                    if temp != self._last_colour_temp:
+                        if temp == 0:
+                            # Auto white balance
+                            controls["AwbEnable"] = True
+                        else:
+                            # Manual white balance with color temperature
+                            controls["AwbEnable"] = False
+                            controls["ColourGains"] = (temp / 4000.0, temp / 4000.0)  # Simplified color gain calculation
+                        self._last_colour_temp = temp
+                        print(f"Applied colour temperature: {'Auto' if temp == 0 else str(temp) + 'K'}")
+
+                    # Apply controls if any changed
+                    if controls:
+                        try:
+                            self.camera.set_controls(controls)
+                        except Exception as e:
+                            print(f"Warning: Failed to apply camera controls: {e}")
 
                 self.hud.update(self.camera)
                 time.sleep(HUD_UPDATE_INTERVAL)

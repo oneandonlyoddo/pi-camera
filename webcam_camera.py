@@ -27,6 +27,10 @@ class WebcamCamera:
         self.cap = None
         self.camera_state = camera_state
 
+        # Track last applied settings to avoid unnecessary updates
+        self._last_gain = None
+        self._last_colour_temp = None
+
         # Create photos and thumbnails directories if they don't exist
         self.photos_dir.mkdir(parents=True, exist_ok=True)
         self.thumbnails_dir.mkdir(parents=True, exist_ok=True)
@@ -119,14 +123,32 @@ class WebcamCamera:
                     print("Web shutter request received - capturing image...")
                     self.capture_photo(frame)
 
-                # Simulate applying settings from web
-                if self.camera_state:
+                # Apply settings from web (limited webcam support)
+                if self.camera_state and self.cap:
                     gain = self.camera_state.analogue_gain
                     temp = self.camera_state.colour_temperature
-                    if gain > 0:
-                        # Just print for verification since webcam gain is tricky to mock uniformly
-                        # print(f"Mock Gain set to {gain}")
-                        pass
+
+                    # Apply gain if changed (note: webcam support varies by hardware)
+                    if gain != self._last_gain and gain > 0:
+                        try:
+                            # Try to set exposure (not true gain, but similar effect)
+                            # Note: OpenCV webcam controls are very hardware-dependent
+                            # ISO/gain equivalents: cv2.CAP_PROP_ISO or cv2.CAP_PROP_GAIN
+                            self.cap.set(cv2.CAP_PROP_GAIN, gain)
+                            print(f"Applied webcam gain: {gain} (hardware support may vary)")
+                        except Exception as e:
+                            print(f"Note: Webcam gain control not supported on this device")
+                        self._last_gain = gain
+
+                    # Color temperature adjustment for webcam (limited support)
+                    if temp != self._last_colour_temp and temp > 0:
+                        try:
+                            # Most webcams don't support color temperature control directly
+                            # This is a placeholder - actual implementation depends on hardware
+                            print(f"Note: Webcam color temperature {temp}K requested (limited hardware support)")
+                        except Exception:
+                            pass
+                        self._last_colour_temp = temp
 
                 # Update HUD
                 # HUD.update() calls camera.set_overlay(np_array)

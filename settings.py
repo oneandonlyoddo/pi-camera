@@ -67,8 +67,8 @@ HUD_PADDING_W = 6  # Padding from screen edges in pixels
 HUD_PADDING_H = 6
 
 # HUD colors (RGBA format: Red, Green, Blue, Alpha
-HUD_COLOR_TEXT = (0, 0, 0, 255)  # Black text for time
-
+HUD_COLOR_WHITE = (255, 255, 255, 255)  # White text for time
+HUD_COLOR_BLACK = (0, 0, 0, 255)  # Black text for settings
 
 # HUD Background Image
 # Path to a transparent PNG to use as the HUD background (optional)

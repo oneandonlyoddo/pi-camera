@@ -78,14 +78,14 @@ class HUD:
         # Draw time
         time_x = self.preview_size[0] - time_width - HUD_PADDING_W
         time_y = HUD_PADDING_H
-        draw.text((time_x, time_y), time_str, font=font, fill=HUD_COLOR_TEXT)
+        draw.text((time_x, time_y), time_str, font=font, fill=HUD_COLOR_WHITE)
         
         # Calculate metadata text dimensions
         meta_bbox = draw.textbbox((0, 0), meta_str, font=font)
         meta_height = meta_bbox[3] - meta_bbox[1]
 
         # Draw Metadata
-        draw.text((HUD_PADDING_W, self.preview_size[1] - meta_height - HUD_PADDING_H), meta_str, font=font, fill=HUD_COLOR_TEXT )
+        draw.text((HUD_PADDING_W, self.preview_size[1] - meta_height - HUD_PADDING_H), meta_str, font=font, fill=HUD_COLOR_BLACK )
         
         # Update the overlay
         if PREVIEW_ROTATE:

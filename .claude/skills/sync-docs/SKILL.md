@@ -14,7 +14,7 @@ Go through each, and note every mismatch with file and line:
 1. **Settings:** every constant in `settings.py` vs README "Configuration" (names, values, comments). No documented setting that does not exist.
 2. **API:** every route in `web/app.py` (method, path, status codes, payload) vs README "API Reference", the route table in CLAUDE.md, and `tests/test_web.py`.
 3. **Files:** the actual tree (`git ls-files -co --exclude-standard`) vs README "File Structure" and CLAUDE.md file mentions.
-4. **Dependencies:** apt package lists in README, CLAUDE.md, `requirements.txt` and rule R1 agree with each other and with the imports in the code.
+4. **Dependencies:** apt package lists in README, CLAUDE.md and rule R1 agree with each other and with the imports in the code.
 5. **Dev loop:** modes in `scripts/dev.sh` vs README "Development Workflow", CLAUDE.md, the `/on-device` skill, and permission rules in `.claude/settings.json`. The excluded-from-copy list matches the `grep -zvE` line.
 6. **Known issues:** each entry in CLAUDE.md and README is still true in the code. Each `xfail` test in `tests/` names a known issue that still exists, and vice versa where a test is possible.
 7. **Features:** `docs/FEATURES.md` statuses match the code (`done` features exist, removed ones are gone).

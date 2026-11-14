@@ -4,7 +4,7 @@ These rules describe the target state. Where existing code breaks a rule, it is 
 
 ## R1 · Dependencies come from apt
 - The app runs only on the Pi (Raspberry Pi OS Lite). Never use pip there.
-- A new dependency must exist as a `python3-*` package in Raspberry Pi OS apt. Name the package in the change and add it to the apt lines in README and CLAUDE.md, and to `requirements.txt`.
+- A new dependency must exist as a `python3-*` package in Raspberry Pi OS apt. Name the package in the change and add it to the apt lines in README and CLAUDE.md. There is no `requirements.txt`; the README apt line is the package list.
 - Prefer the standard library over a new dependency.
 
 ## R4 · Paths come from the project root

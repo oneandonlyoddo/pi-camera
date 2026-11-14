@@ -1,362 +1,392 @@
 # Raspberry Pi Zero Digital Camera
 
-A digital camera implementation using the Raspberry Pi HQ Camera module with integrated web interface. This project turns your Raspberry Pi into a fully functional digital camera with hardware button control, fullscreen preview, remote web access, and high-quality image capture in both JPG and RAW formats.
+A digital camera built on the Raspberry Pi HQ Camera module, with a built-in web interface. It turns a Raspberry Pi into a camera with a hardware shutter button, touchscreen trigger, fullscreen preview with HUD, a remote web gallery and remote controls, and saves every shot as JPG and RAW (DNG).
 
 ## Architecture
 
-This application uses a multi-threaded architecture:
-- **Main Thread**: Runs the camera preview and capture loop
-- **Background Thread**: Runs a Flask web server for remote access
-- **Shared State**: Thread-safe communication between camera and web interface
+The application runs several threads:
+- **Main thread**: camera preview, HUD updates, settings application and the capture loop
+- **Web thread** (daemon): Flask web server for the gallery and remote control
+- **Touchscreen thread** (daemon, Pi only, optional): listens for touch events via evdev
+- **GPIO callback thread** (Pi only, managed by gpiozero): handles the shutter button
 
-When you start the application, both the camera interface (with fullscreen preview on the Pi's display) and the web server (accessible at `http://<pi-ip>:5000`) run simultaneously. You can capture photos using either the physical button or the web interface.
+The web server and the camera loop communicate through a lock-protected `CameraState` object (`shared_state.py`). When you start the application, the camera preview (on the Pi's display) and the web server (at `http://<pi-ip>:5000`) run at the same time.
 
 ## Features
 
-### Camera Features
-- 📸 **Hardware Shutter Button** - Physical button trigger via GPIO
-- 👆 **Touchscreen Support** - Touch anywhere on screen to capture (optional, requires touchscreen display)
-- 🖥️ **Fullscreen Preview** - Live camera preview on connected display
-- 📷 **High-Resolution Capture** - Full 4056x3040 resolution (12.3 MP)
-- 🎞️ **Dual Format Saving** - Captures both JPG and RAW (DNG) formats
-- 🕒 **Timestamped Files** - Automatic filename generation with timestamps
-- 📊 **HUD Overlay** - Real-time display of date, time, exposure, gain, and white balance
+### Camera
+- 📸 **Hardware shutter button** via GPIO (enable with `GPIO_CONNECTED = True`)
+- 👆 **Touchscreen trigger**: touch anywhere on the screen to capture (optional, Pi only)
+- 🖥️ **Fullscreen preview** on the connected display (DRM preview, 800x480)
+- 📷 **Full-resolution capture**: 4056x3040 (12.3 MP)
+- 🎞️ **JPG + RAW (DNG)** for every shot
+- 🖼️ **Thumbnails** generated right after capture (`DCIM/thumbs/`)
+- 🕒 **Timestamped filenames**
+- 📊 **HUD overlay** with time, date, exposure, gain and white balance
 
-### Web Interface Features
-- 🌐 **Remote Web Access** - Control camera from any device on your network
-- 🖼️ **Photo Gallery** - Browse captured images in a responsive grid layout
-- 🔍 **Lightbox View** - Full-screen image preview with modal viewer
-- 🎮 **Remote Shutter** - Trigger camera capture from the web interface
-- ⚙️ **Live Settings Control** - Adjust analogue gain and color temperature remotely
-- 📱 **Mobile Friendly** - Responsive design optimized for phones and tablets
+### Web interface
+- 🖼️ **Gallery**: thumbnail grid with lazy loading, full-size lightbox on tap
+- 🎮 **Remote shutter**
+- ⚙️ **Live controls** for analogue gain and colour temperature
+- 📱 **Mobile-friendly** layout
 
-### Development Features
-- 💻 **Webcam Fallback** - Development mode using standard webcams for testing without Pi hardware
-- 🔄 **Thread-Safe Architecture** - Separate threads for camera and web server with shared state management
+### Development
+- 🔁 **One-command deploy**: edit on your desktop, run on the Pi with `scripts/dev.sh`
 
 ## Hardware Requirements
 
-- Raspberry Pi (tested on Pi Zero, compatible with Pi 3/4/5)
+- Raspberry Pi (designed for Pi Zero 2 W; Pi 3/4/5 should work)
 - Raspberry Pi HQ Camera module
-- Push button for shutter control
-- Display (HDMI or DSI) for preview
+- Push button for the shutter (optional)
+- Display (HDMI or DSI) for the preview; touchscreen optional
 - MicroSD card with Raspberry Pi OS
 
 ## Wiring
 
 Connect a push button to your Raspberry Pi:
-- **Button Pin 1** → GPIO 17 (BCM numbering, Physical Pin 11)
-- **Button Pin 2** → GND (any ground pin)
+- **Button pin 1** → GPIO 17 (BCM numbering, physical pin 11)
+- **Button pin 2** → GND (any ground pin)
 
 The button uses the internal pull-up resistor, so no external resistor is needed.
 
+**Note:** the button only triggers captures when `GPIO_CONNECTED = True` in `settings.py` (default `False`).
+
 ## Installation
 
-### 1. Clone or Download the Project
+### 1. Get the code
 
 ```bash
-git clone github.com/oneandonlyoddo/pi-camera
+git clone https://github.com/oneandonlyoddo/pi-camera.git
 cd pi-camera
 ```
 
-Or download the files directly to your Raspberry Pi.
+### 2. Install dependencies
 
-### 2. Install Python Dependencies
+The app runs on the Raspberry Pi only. Use `apt`, not `pip`. These packages are managed by the system:
 
 ```bash
-pip install -r requirements.txt
-
-**Note:** These dependencies are Raspberry Pi-specific and must be installed on the Pi itself. On some Raspbian distros these packages are managed and need to be intstalled via apt. 
-for example:
-```bash
-sudo apt install python3-picamera2
+sudo apt install python3-picamera2 python3-gpiozero python3-numpy python3-evdev
+sudo apt install python3-pil python3-flask
+sudo apt install python3-pytest   # only needed to run the tests
 ```
+
+`requirements.txt` lists the same packages for reference.
+
+To develop on a desktop and run on the Pi, see [Development Workflow](#development-workflow).
 
 ## Usage
 
-### Run the Camera
+### Run the camera
+
+**Always start the app from the project folder.** The camera saves photos and loads HUD assets relative to the current working directory, while the web server always uses the project folder (see [Known Issues](#known-issues)).
 
 ```bash
-python main.py
+cd pi-camera
+python3 main.py
 ```
 
-Or make it executable and run directly:
+To start the camera automatically at boot, install it as a systemd service (see [Development Workflow](#development-workflow)).
 
-```bash
-chmod +x main.py
-./main.py
-```
+### Taking photos
 
-### Taking Photos
+1. The camera starts with a fullscreen preview.
+2. Capture a photo with any of these:
+   - **Hardware button** (if `GPIO_CONNECTED = True`)
+   - **Touchscreen**: touch anywhere on the screen (if a touchscreen is detected)
+   - **Web interface**: shutter button in the Settings tab (may take up to ~1 s to fire)
+3. Photos are saved to `DCIM/`, thumbnails to `DCIM/thumbs/`.
+4. Each capture creates:
+   - `IMG_YYYYMMDD_HHMMSS.jpg`: JPEG image
+   - `IMG_YYYYMMDD_HHMMSS.dng`: RAW DNG file
+   - `thumbs/IMG_YYYYMMDD_HHMMSS.jpg`: 300x225 thumbnail
 
-1. The camera will start with a fullscreen preview
-2. Capture a photo using any of these methods:
-   - **Hardware Button**: Press the physical GPIO button
-   - **Touchscreen**: Touch anywhere on the screen (if touchscreen is connected)
-   - **Web Interface**: Use the shutter button in the settings tab
-3. Photos are saved to `./DCIM` by default
-4. Each capture creates two files:
-   - `IMG_YYYYMMDD_HHMMSS.jpg` - JPEG image
-   - `IMG_YYYYMMDD_HHMMSS.dng` - RAW DNG file
+### Using the web interface
 
-### Using the Web Interface
-
-Once the camera is running, you can access the web interface from any device on the same network:
-
-1. **Find your Pi's IP address**:
+1. **Find your Pi's IP address:**
    ```bash
    hostname -I
    ```
 
-2. **Open a web browser** and navigate to:
-   ```
-   http://<pi-ip-address>:5000
-   ```
-   For example: `http://192.168.1.100:5000`
+2. **Open** `http://<pi-ip-address>:5000` in a browser on the same network (for example `http://192.168.1.100:5000`).
 
-3. **Gallery Tab**: View all captured photos in a responsive grid
-   - Tap any thumbnail to view full-screen
-   - Photos are sorted with newest first
-   - Lazy loading for better performance
+3. **Gallery tab**
+   - Shows all `.jpg` files in `DCIM/`, newest first (by file modification time)
+   - Tap a thumbnail to open the full image
+   - DNG files are not shown
+   - The list loads once per page load; reload the page to see new photos
 
-4. **Settings Tab**: Remote camera control
-   - **Shutter Button**: Capture photos remotely
-   - **Analogue Gain**: Adjust sensor gain (0 = Auto, up to 16x)
-   - **Color Temperature**: Set white balance (0 = Auto, up to 8000K)
+4. **Settings tab**
+   - **Shutter button**: capture remotely
+   - **Analogue gain**: 0 = auto, up to 16x (step 0.1)
+   - **Colour temperature**: 0 = auto, up to 8000 K (step 100)
 
-### Exit the Application
+Settings are kept in memory only and reset to auto when the app restarts.
 
-Press `Ctrl+C` to safely shut down the camera.
+**Security:** the web server listens on all interfaces (`0.0.0.0:5000`) with no authentication. Use it on a trusted network only.
+
+### Exit the application
+
+Press `Ctrl+C`. When running as a service: `sudo systemctl stop pi-camera`.
 
 ## Configuration
 
-All configurable settings are centralized in `settings.py`. You can customize the camera behavior by editing this file.
+All static settings are in `settings.py`. Gain and colour temperature are runtime settings controlled from the web interface and are not in `settings.py`.
 
-### Key Settings Categories
-
-#### GPIO Configuration
+### GPIO
 ```python
-GPIO_BUTTON_PIN = 17              # GPIO pin for shutter button (BCM numbering)
-GPIO_DEBOUNCE_TIME = 0.3          # Button debounce time in seconds
-GPIO_CONNECTED = False            # Set to True when hardware button is wired up
+GPIO_BUTTON_PIN = 17              # Shutter button pin (BCM numbering)
+GPIO_DEBOUNCE_TIME = 0.3          # Debounce time in seconds
+GPIO_CONNECTED = False            # Set to True once the button is wired up
 ```
 
-#### Touchscreen Configuration
+### Touchscreen
 ```python
-TOUCHSCREEN_ENABLED = True        # Enable touchscreen shutter trigger (requires evdev)
+TOUCHSCREEN_ENABLED = True        # Touchscreen shutter (Pi only, requires evdev)
 ```
 
-#### File Paths and Naming
+### File paths and naming
 ```python
-PHOTOS_DIR = "./DCIM"             # Photo save location
-FILENAME_PREFIX = "IMG"           # Prefix for saved image files
-FILENAME_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"  # Timestamp format
+PHOTOS_DIR = "DCIM"               # Photo folder
+THUMBNAILS_DIR = "DCIM/thumbs"    # Thumbnail folder
+FILENAME_PREFIX = "IMG"
+FILENAME_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"
+JPG_EXTENSION = ".jpg"
+RAW_EXTENSION = ".dng"
 ```
 
-#### Camera Resolution
+### Thumbnails
 ```python
-# Preview resolution (for live view)
-PREVIEW_WIDTH = 800
+THUMBNAIL_WIDTH = 300
+THUMBNAIL_HEIGHT = 225
+THUMBNAIL_QUALITY = 85            # JPEG quality (1-100)
+```
+
+### Resolution
+```python
+PREVIEW_WIDTH = 800               # Live preview
 PREVIEW_HEIGHT = 480
-
-# Capture resolution (for high-res still images)
-CAPTURE_WIDTH = 4056
+CAPTURE_WIDTH = 4056              # Still capture
 CAPTURE_HEIGHT = 3040
+PREVIEW_WINDOW_X = 0              # Preview window position
+PREVIEW_WINDOW_Y = 0
 ```
 
-#### HUD (Heads-Up Display)
+### Preview
 ```python
-HUD_FONT_SIZE = 24                           # Font size
-HUD_PADDING_W = 6                            # Horizontal padding
-HUD_PADDING_H = 6                            # Vertical padding
-HUD_COLOR_TEXT = (0, 0, 0, 255)              # Black text (RGBA)
-HUD_BACKGROUND_IMAGE_PATH = "./assets/hud_grid.png"  # Optional background image
+PREVIEW_ROTATE = True             # Rotate preview and HUD by 180 degrees (display mounted upside down)
 ```
 
-#### Preview Settings
+`PREVIEW_ROTATE` only affects what is shown on the display. Saved photos are never rotated.
+
+### Timing
 ```python
-PREVIEW_ROTATE = False            # Set to True to rotate preview 180 degrees
+CAPTURE_PAUSE_DURATION = 0.5      # Pause after capture before returning to preview
+HUD_UPDATE_INTERVAL = 1.0         # Camera loop interval (HUD refresh, web trigger polling)
 ```
 
-#### Timing
+### HUD
 ```python
-CAPTURE_PAUSE_DURATION = 0.5      # Seconds to pause after capture
-HUD_UPDATE_INTERVAL = 1.0         # Seconds between HUD updates
+HUD_FONT_PATH = "./assets/fonts/JetBrainsMono-Medium.ttf"
+HUD_FONT_SIZE = 24
+HUD_TIME_FORMAT = "%H:%M - %d/%m/%Y"
+HUD_PADDING_W = 6
+HUD_PADDING_H = 6
+HUD_COLOR_WHITE = (255, 255, 255, 255)   # Time/date text (RGBA)
+HUD_COLOR_BLACK = (0, 0, 0, 255)         # Exposure/gain/WB text (RGBA)
+HUD_BACKGROUND_IMAGE_PATH = "./assets/hud_grid.png"  # Set to None for a transparent background
 ```
 
-See `settings.py`for the complete list of configurable parameters.
+## Development Workflow
 
-## Development Mode
+Edit on your desktop, run on the Pi. `scripts/dev.sh` (bash; Git Bash on Windows) copies your working copy to the Pi over SSH, uncommitted changes included, and runs it there. No git push/pull in the loop.
 
-The project includes a webcam fallback mode for development and testing on non-Raspberry Pi systems.
+### One-time setup
 
-### Using Webcam Mode
+1. SSH key login to the Pi, with a host alias in `~/.ssh/config` (default alias: `pi`)
+2. Passwordless `sudo` for your Pi user (default on Raspberry Pi OS)
+3. Install the service:
+   ```bash
+   scripts/dev.sh --install
+   ```
 
-If `picamera2` dependencies are not available, the application automatically falls back to webcam mode:
+Override the defaults with environment variables: `PI_HOST` (SSH host/alias, default `pi`) and `PI_DIR` (path relative to the Pi user's home, default `workspace/pi-camera`).
 
+### Commands
+
+| Command | What it does |
+|---|---|
+| `scripts/dev.sh` | Copy, restart the service, follow the log. Ctrl+C stops following; the camera keeps running. |
+| `scripts/dev.sh --fg` | Copy, stop the service, run in your terminal. Ctrl+C stops the camera; the service restarts afterwards. |
+| `scripts/dev.sh --check` | Copy, restart, wait up to 20 s for the camera to initialize, print the log since restart. Exits 1 if the service is not running, the camera did not initialize, or the log contains errors. |
+| `scripts/dev.sh --logs` | Follow the log only. |
+| `scripts/dev.sh --clean` | List files on the Pi that are not in your working copy (e.g. deleted locally) and delete them after a y/N prompt. Never touches `DCIM/` or `.git/`. |
+| `scripts/dev.sh --test` | Copy, run the test suite (`tests/`) on the Pi. |
+| `scripts/dev.sh --shoot` | Take a photo via the web trigger, wait for JPG + DNG + thumbnail, copy JPG and thumbnail to `device-out/`. Exits 1 if a file is missing or the log has errors. |
+| `scripts/dev.sh --health` | Print service state, picamera2 version, OS, memory, disk, throttling, console blanking and groups. |
+| `scripts/dev.sh --install` | Install and enable the systemd service (`deploy/pi-camera.service`). |
+
+**Notes:**
+- Only files known to git are copied: tracked files plus new files that are not git-ignored. `DCIM/`, `.claude/`, `audits/`, `docs/`, `scripts/` and `.psd` files are not copied.
+- Files you delete locally are not deleted on the Pi.
+- The service starts at boot, restarts after a crash, and stops cleanly (`SIGINT`, same as Ctrl+C).
+
+You can also run the web server alone on the Pi, without the camera (trigger and settings return errors):
 ```bash
-# On Windows, macOS, or Linux without picamera2
-python main.py
+python3 web/app.py
 ```
-
-**Webcam Mode Features:**
-- Uses OpenCV to capture from your default webcam (camera index 0)
-- Displays preview in a window with HUD overlay
-- Press **SPACE** to capture photos
-- Press **Q** to quit
-- Web interface works the same as Pi mode
-- Photos saved as JPG only (no RAW in webcam mode)
-
-**Controls in Webcam Mode:**
-- Physical button: Not available
-- Remote shutter: Works via web interface
-- Settings: Gain control has limited effect (webcam hardware dependent)
-
-### Installing Development Dependencies
-
-```bash
-# Install OpenCV for webcam support
-pip install opencv-python
-```
-
-This allows you to develop and test the web interface, photo gallery, and application logic without needing Raspberry Pi hardware.
 
 ## Troubleshooting
 
-### Camera Not Detected
+### Camera not detected
 
 ```bash
-# Check if camera is detected
-libcamera-hello
+rpicam-hello --list-cameras     # Raspberry Pi OS Bookworm and newer
+libcamera-hello --list-cameras  # older releases
 ```
 
-If the camera is not detected, check your ribbon cable connection and ensure the camera is enabled in `raspi-config`.
+If the camera is not listed, check the ribbon cable and the camera configuration in `raspi-config` / `/boot/firmware/config.txt`.
 
-### Permission Errors
+### Photos missing from the gallery
 
-If you encounter GPIO permission errors, you may need to run with sudo:
+Make sure you started `main.py` from the project folder. Otherwise the camera saves to a `DCIM/` folder under your current directory, while the gallery reads from the project's `DCIM/`.
 
-```bash
-sudo python3 camera.py
-```
+### GPIO permission errors
 
-Or add your user to the `gpio` group:
+Add your user to the `gpio` group, then log out and back in:
 
 ```bash
 sudo usermod -a -G gpio $USER
 ```
 
-Then log out and back in.
+As a last resort, run with `sudo python3 main.py`.
 
-### Preview Not Showing
+### Preview not showing
 
-Ensure you have a display connected via HDMI or DSI. The preview requires a graphical environment.
+Make sure a display is connected via HDMI or DSI. The preview uses DRM, so it needs a console session; it does not run inside a desktop window.
 
-### Touchscreen Not Working
+### Touchscreen not working
 
-If touchscreen capture doesn't work:
-
-1. **Check evdev is installed**:
+1. **Check evdev is installed:**
    ```bash
-   pip install evdev
+   sudo apt install python3-evdev
    ```
 
-2. **List available input devices**:
+2. **List input devices:**
    ```bash
-   python -c "from evdev import list_devices, InputDevice; [print(f'{d}: {InputDevice(d).name}') for d in list_devices()]"
+   python3 -c "from evdev import list_devices, InputDevice; [print(f'{d}: {InputDevice(d).name}') for d in list_devices()]"
    ```
 
-3. **Check permissions**: Your user may need to be in the `input` group:
+3. **Check permissions:** your user may need to be in the `input` group:
    ```bash
    sudo usermod -a -G input $USER
    ```
    Then log out and back in.
 
-4. **Disable in settings**: Set `TOUCHSCREEN_ENABLED = False` in `settings.py` if you don't have a touchscreen
+4. **Disable it:** set `TOUCHSCREEN_ENABLED = False` in `settings.py` if you have no touchscreen.
 
 ## API Reference
 
-The Flask web server provides the following REST API endpoints:
+No authentication. All endpoints are served on port 5000.
 
 ### GET /
-Returns the main web interface (gallery and settings UI).
+Returns the web interface (gallery and settings).
 
 ### GET /api/photos
-Returns a JSON array of photo filenames sorted by date (newest first).
+Returns a JSON array of `.jpg` filenames in `DCIM/`, newest first (by modification time).
 
-**Response:**
 ```json
 ["IMG_20260127_123456.jpg", "IMG_20260127_120000.jpg"]
 ```
 
-### GET /dcim/<filename>
-Serves a photo file from the DCIM directory.
+On error: `500` with `{"error": "<message>"}`.
 
-**Example:** `/dcim/IMG_20260127_123456.jpg`
+### GET /dcim/&lt;filename&gt;
+Serves a full-size file from `DCIM/` with a 1-year cache header.
+
+Example: `/dcim/IMG_20260127_123456.jpg`
+
+### GET /dcim/thumbs/&lt;filename&gt;
+Serves the thumbnail for a photo, generating it first if it does not exist. 1-year cache header.
+
+- `404` with `{"error": "Image not found"}` if the original photo does not exist
+- `500` with `{"error": "Failed to generate thumbnail"}` if generation fails
 
 ### POST /api/trigger
-Triggers the camera shutter to capture a photo.
+Requests a capture. The camera loop picks the request up on its next iteration (up to `HUD_UPDATE_INTERVAL`, 1 s by default).
 
-**Response:**
 ```json
 {"status": "ok", "message": "Shutter requested"}
 ```
 
 ### GET /api/settings
-Returns current camera settings.
+Returns the current runtime settings.
 
-**Response:**
 ```json
-{
-  "gain": 0.0,
-  "color_temp": 0
-}
+{"gain": 0.0, "color_temp": 0}
 ```
 
 ### POST /api/settings
-Updates camera settings. Accepts JSON payload with optional `gain` and `color_temp` fields.
+Updates `gain` (float) and/or `color_temp` (int). Both fields are optional. `0` means automatic.
 
 **Request:**
 ```json
-{
-  "gain": 2.5,
-  "color_temp": 5000
-}
+{"gain": 2.5, "color_temp": 5000}
 ```
 
 **Response:**
 ```json
-{
-  "status": "ok",
-  "gain": 2.5,
-  "color_temp": 5000
-}
+{"status": "ok", "gain": 2.5, "color_temp": 5000}
 ```
 
-**Note:** Set gain or color_temp to 0 for automatic mode.
+- `400` if the body is empty
+- Values that cannot be converted are silently ignored
+- Values are not range-checked
+
+`/api/trigger` and `/api/settings` return `500` if the app was started without camera state (for example `python web/app.py`).
+
+## Known Issues
+
+- **Paths depend on the working directory:** the camera classes and the HUD use paths from `settings.py` relative to the current directory; the web server resolves them from the project folder. Start the app from the project folder.
+- **JPG and DNG are separate exposures:** they are captured with two consecutive capture calls, so they are not the same frame. One shot takes about 10 s.
+- **Preview flips after the first photo:** with `PREVIEW_ROTATE = True`, the live preview is upside down from the first capture on (the HUD stays correct), because the preview configuration rebuilt after capture does not reapply the rotation.
+- **Colour temperature is approximate:** manual white balance sets red and blue gains to the same value (`temp / 4000`), which is not a real colour-temperature mapping.
+- **Concurrent triggers:** the GPIO button and touchscreen call the capture directly from their own threads, which can collide with the camera loop or with each other.
+- **Same-second captures overwrite each other:** filenames only have 1-second resolution.
+- **Thumbnail route does not validate filenames:** `/dcim/thumbs/<filename>` does not check that the path stays inside `DCIM/`.
 
 ## File Structure
 
 ```
 pi-camera/
-├── main.py              # Application entry point and thread orchestration
-├── digital_camera.py    # Raspberry Pi camera controller (Picamera2)
-├── webcam_camera.py     # Webcam fallback implementation (OpenCV)
-├── shared_state.py      # Thread-safe state management
-├── hud.py               # HUD overlay implementation
-├── settings.py          # Configuration settings
-├── web/                 # Web interface
-│   ├── app.py           # Flask application and API routes
-│   ├── static/          # CSS and static assets
+├── main.py              # Entry point: starts Flask thread, runs camera loop
+├── digital_camera.py    # Camera controller (Picamera2, GPIO, touchscreen)
+├── touchscreen.py       # Touchscreen input via evdev (Pi only)
+├── shared_state.py      # Thread-safe state shared between web server and camera
+├── hud.py               # HUD overlay (PIL)
+├── settings.py          # Static configuration
+├── web/
+│   ├── app.py           # Flask app and API routes
+│   ├── static/
 │   │   └── styles.css   # Web interface styles
-│   └── templates/       # HTML templates
+│   └── templates/
 │       └── index.html   # Gallery and settings UI
-├── assets/              # Resources (fonts, images)
-│   ├── fonts/           # HUD fonts
-│   └── hud_grid.png     # Optional HUD background
-├── DCIM/                # Photo storage (created automatically)
-├── requirements.txt     # Python dependencies
-└── README.md            # This file
+├── assets/
+│   ├── fonts/           # HUD font (JetBrains Mono, OFL)
+│   ├── hud_grid.png     # HUD background
+│   └── hud_grid.psd     # HUD background source
+├── scripts/
+│   └── dev.sh           # Desktop → Pi deploy, run and log commands
+├── deploy/
+│   └── pi-camera.service  # systemd unit template
+├── tests/               # pytest suite, runs on the Pi (scripts/dev.sh --test)
+├── docs/                # Feature list, specs, design notes
+├── .claude/             # Claude Code harness: rules, skills, hooks, settings
+├── DCIM/                # Photos (created automatically, git-ignored)
+│   └── thumbs/          # Thumbnails
+├── requirements.txt     # Python dependencies (reference; install via apt)
+├── ruff.toml            # Lint config (desktop)
+├── CLAUDE.md            # Guidance for Claude Code
+└── README.md
 ```
 
 ## License
@@ -365,4 +395,4 @@ This project is open source and available for personal and educational use.
 
 ## Acknowledgments
 
-Built using the excellent [picamera2](https://github.com/raspberrypi/picamera2) library from the Raspberry Pi Foundation.
+Built using the [picamera2](https://github.com/raspberrypi/picamera2) library from Raspberry Pi.

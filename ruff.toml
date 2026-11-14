@@ -1,0 +1,7 @@
+# Lint config. Runs on the desktop via `uvx ruff check` (hook: .claude/hooks/ruff_check.py).
+# Target = Python on the Pi (Raspberry Pi OS / Debian 13 trixie: Python 3.13).
+target-version = "py313"
+line-length = 120
+
+[lint]
+select = ["E4", "E7", "E9", "F", "B"]

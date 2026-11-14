@@ -5,10 +5,3 @@ line-length = 120
 
 [lint]
 select = ["E4", "E7", "E9", "F", "B"]
-
-[lint.per-file-ignores]
-# Temporary, until the star imports are replaced (audit 08e0746, finding 7). Delete then.
-# settings.py F401: hud.py gets `Path` through `from settings import *`; removing it breaks the HUD.
-"digital_camera.py" = ["F403", "F405"]
-"hud.py" = ["F403", "F405"]
-"settings.py" = ["F401"]

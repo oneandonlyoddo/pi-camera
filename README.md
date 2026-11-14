@@ -20,7 +20,7 @@ The web server and the camera loop communicate through a lock-protected `CameraS
 - 🖥️ **Fullscreen preview** on the connected display (DRM preview, 800x480)
 - 📷 **Full-resolution capture**: 4056x3040 (12.3 MP)
 - 🎞️ **JPG + RAW (DNG)** for every shot
-- 🖼️ **Thumbnails** generated right after capture (`DCIM/thumbs/`)
+- 🖼️ **Thumbnails** generated on first view in the gallery (`DCIM/thumbs/`)
 - 🕒 **Timestamped filenames**
 - 📊 **HUD overlay** with time, date, exposure, gain and white balance
 
@@ -70,15 +70,11 @@ sudo apt install python3-pil python3-flask
 sudo apt install python3-pytest   # only needed to run the tests
 ```
 
-`requirements.txt` lists the same packages for reference.
-
 To develop on a desktop and run on the Pi, see [Development Workflow](#development-workflow).
 
 ## Usage
 
 ### Run the camera
-
-**Always start the app from the project folder.** The camera saves photos and loads HUD assets relative to the current working directory, while the web server always uses the project folder (see [Known Issues](#known-issues)).
 
 ```bash
 cd pi-camera
@@ -93,12 +89,12 @@ To start the camera automatically at boot, install it as a systemd service (see 
 2. Capture a photo with any of these:
    - **Hardware button** (if `GPIO_CONNECTED = True`)
    - **Touchscreen**: touch anywhere on the screen (if a touchscreen is detected)
-   - **Web interface**: shutter button in the Settings tab (may take up to ~1 s to fire)
-3. Photos are saved to `DCIM/`, thumbnails to `DCIM/thumbs/`.
-4. Each capture creates:
-   - `IMG_YYYYMMDD_HHMMSS.jpg`: JPEG image
-   - `IMG_YYYYMMDD_HHMMSS.dng`: RAW DNG file
-   - `thumbs/IMG_YYYYMMDD_HHMMSS.jpg`: 300x225 thumbnail
+   - **Web interface**: shutter button in the Settings tab
+3. Each capture takes one exposure and saves it twice, both from the same frame:
+   - `DCIM/IMG_YYYYMMDD_HHMMSS_ffffff.jpg`: JPEG image
+   - `DCIM/IMG_YYYYMMDD_HHMMSS_ffffff.dng`: RAW DNG file
+
+   The preview returns about 2 s after the trigger; the files are written a few seconds later. Shutter presses during a capture are ignored. The gallery creates a 300x225 thumbnail in `DCIM/thumbs/` the first time it shows a photo.
 
 ### Using the web interface
 
@@ -146,10 +142,11 @@ TOUCHSCREEN_ENABLED = True        # Touchscreen shutter (Pi only, requires evdev
 
 ### File paths and naming
 ```python
-PHOTOS_DIR = "DCIM"               # Photo folder
-THUMBNAILS_DIR = "DCIM/thumbs"    # Thumbnail folder
+PROJECT_ROOT = Path(__file__).resolve().parent   # all paths are absolute, from here
+PHOTOS_DIR = PROJECT_ROOT / "DCIM"               # Photo folder
+THUMBNAILS_DIR = PHOTOS_DIR / "thumbs"           # Thumbnail folder
 FILENAME_PREFIX = "IMG"
-FILENAME_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"
+FILENAME_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S_%f"   # microseconds: two shots never share a name
 JPG_EXTENSION = ".jpg"
 RAW_EXTENSION = ".dng"
 ```
@@ -180,20 +177,29 @@ PREVIEW_ROTATE = True             # Rotate preview and HUD by 180 degrees (for a
 
 ### Timing
 ```python
-CAPTURE_PAUSE_DURATION = 0.5      # Pause after capture before returning to preview
-HUD_UPDATE_INTERVAL = 1.0         # Camera loop interval (HUD refresh, web trigger polling)
+HUD_UPDATE_INTERVAL = 1.0         # HUD refresh interval; a shutter request wakes the loop immediately
 ```
+
+### Runtime setting ranges
+```python
+GAIN_MIN = 1.0                    # Analogue gain (0 = auto, else GAIN_MIN..GAIN_MAX)
+GAIN_MAX = 16.0
+COLOUR_TEMP_MIN = 2000            # Colour temperature in K (0 = auto, else MIN..MAX)
+COLOUR_TEMP_MAX = 8000
+```
+
+The web API rejects values outside these ranges, and the web sliders use them.
 
 ### HUD
 ```python
-HUD_FONT_PATH = "./assets/fonts/JetBrainsMono-Medium.ttf"
+HUD_FONT_PATH = PROJECT_ROOT / "assets" / "fonts" / "JetBrainsMono-Medium.ttf"
 HUD_FONT_SIZE = 24
 HUD_TIME_FORMAT = "%H:%M - %d/%m/%Y"
 HUD_PADDING_W = 6
 HUD_PADDING_H = 6
 HUD_COLOR_WHITE = (255, 255, 255, 255)   # Time/date text (RGBA)
 HUD_COLOR_BLACK = (0, 0, 0, 255)         # Exposure/gain/WB text (RGBA)
-HUD_BACKGROUND_IMAGE_PATH = "./assets/hud_grid.png"  # Set to None for a transparent background
+HUD_BACKGROUND_IMAGE_PATH = PROJECT_ROOT / "assets" / "hud_grid.png"  # None = transparent background
 ```
 
 ## Development Workflow
@@ -245,10 +251,6 @@ libcamera-hello --list-cameras  # older releases
 ```
 
 If the camera is not listed, check the ribbon cable and the camera configuration in `raspi-config` / `/boot/firmware/config.txt`.
-
-### Photos missing from the gallery
-
-Make sure you started `main.py` from the project folder. Otherwise the camera saves to a `DCIM/` folder under your current directory, while the gallery reads from the project's `DCIM/`.
 
 ### GPIO permission errors
 
@@ -308,11 +310,11 @@ Example: `/dcim/IMG_20260127_123456.jpg`
 ### GET /dcim/thumbs/&lt;filename&gt;
 Serves the thumbnail for a photo, generating it first if it does not exist. 1-year cache header.
 
-- `404` with `{"error": "Image not found"}` if the original photo does not exist
+- `404` with `{"error": "Image not found"}` if the original photo does not exist, or if the name is not a plain filename (no folders, no `..`)
 - `500` with `{"error": "Failed to generate thumbnail"}` if generation fails
 
 ### POST /api/trigger
-Requests a capture. The camera loop picks the request up on its next iteration (up to `HUD_UPDATE_INTERVAL`, 1 s by default).
+Requests a capture. The camera starts it immediately; requests made while a capture is running are ignored.
 
 ```json
 {"status": "ok", "message": "Shutter requested"}
@@ -326,7 +328,7 @@ Returns the current runtime settings.
 ```
 
 ### POST /api/settings
-Updates `gain` (float) and/or `color_temp` (int). Both fields are optional. `0` means automatic.
+Updates `gain` and/or `color_temp`. Both fields are optional. Each must be `0` (automatic) or within its range in `settings.py`: gain `1.0`–`16.0`, colour temperature `2000`–`8000` K.
 
 **Request:**
 ```json
@@ -338,21 +340,13 @@ Updates `gain` (float) and/or `color_temp` (int). Both fields are optional. `0` 
 {"status": "ok", "gain": 2.5, "color_temp": 5000}
 ```
 
-- `400` if the body is empty
-- Values that cannot be converted are silently ignored
-- Values are not range-checked
+- `400` with `{"status": "error", "message": "..."}` if the body is empty or any value is invalid (out of range, not a number, NaN, `true`/`false`). Nothing is changed then, not even a valid value in the same request.
 
 `/api/trigger` and `/api/settings` return `500` if the app was started without camera state (for example `python web/app.py`).
 
 ## Known Issues
 
-- **Paths depend on the working directory:** the camera classes and the HUD use paths from `settings.py` relative to the current directory; the web server resolves them from the project folder. Start the app from the project folder.
-- **JPG and DNG are separate exposures:** they are captured with two consecutive capture calls, so they are not the same frame. One shot takes about 10 s.
-- **Preview flips after the first photo:** with `PREVIEW_ROTATE = True`, the live preview is upside down from the first capture on (the HUD stays correct), because the preview configuration rebuilt after capture does not reapply the rotation.
-- **Colour temperature is approximate:** manual white balance sets red and blue gains to the same value (`temp / 4000`), which is not a real colour-temperature mapping.
-- **Concurrent triggers:** the GPIO button and touchscreen call the capture directly from their own threads, which can collide with the camera loop or with each other.
-- **Same-second captures overwrite each other:** filenames only have 1-second resolution.
-- **Thumbnail route does not validate filenames:** `/dcim/thumbs/<filename>` does not check that the path stays inside `DCIM/`.
+- **The HUD pauses while a photo is saved:** writing the JPG and DNG takes a few seconds on the Pi Zero, during which the HUD is not updated and shutter presses are ignored. The preview itself keeps running.
 
 ## File Structure
 
@@ -383,7 +377,6 @@ pi-camera/
 ├── .claude/             # Claude Code harness: rules, skills, hooks, settings
 ├── DCIM/                # Photos (created automatically, git-ignored)
 │   └── thumbs/          # Thumbnails
-├── requirements.txt     # Python dependencies (reference; install via apt)
 ├── ruff.toml            # Lint config (desktop)
 ├── CLAUDE.md            # Guidance for Claude Code
 └── README.md

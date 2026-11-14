@@ -10,7 +10,7 @@ Status: `done` · `wip` · `planned` · `idea` · `rejected`. A rejected feature
 | Shutter: touchscreen | done | any touch fires |
 | Shutter: web button | done | |
 | Web gallery with thumbnails + lightbox | done | |
-| Gain / white balance from web | done | WB mapping is a placeholder |
+| Gain / white balance from web | done | gain 1–16x, WB 2000–8000 K via libcamera `ColourTemperature`; 0 = auto |
 | <!-- next feature --> | | |
 
 ## Rejected

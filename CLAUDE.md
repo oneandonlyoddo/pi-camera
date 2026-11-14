@@ -54,31 +54,21 @@ Line endings: the Windows checkout uses CRLF, and files are copied as-is. Keep `
 ## Testing
 
 - **Tests** (`tests/`, pytest) run on the Pi: `scripts/dev.sh --test`. They cover the web API, `CameraState` and settings paths, and use a temporary DCIM (R11). Known issues with a test are marked `xfail(strict=True)`: when the fix lands, the test XPASSes and fails the run until the marker is removed.
-- **Lint:** ruff 0.17.5 on the desktop (`uvx --quiet ruff@0.17.5 check .`, config in `ruff.toml`, target py313, the Pi's Python). The hook runs it after every Python edit. `ruff.toml` temporarily ignores the star-import findings (Known issue 11).
+- **Lint:** ruff 0.17.5 on the desktop (`uvx --quiet ruff@0.17.5 check .`, config in `ruff.toml`, target py313, the Pi's Python). The hook runs it after every Python edit. The repo is clean (0 findings, no ignores).
 - **On-device checks:** `/on-device`. Button presses, touches and what the screen shows need a person at the device.
 
 ## Gotchas
 
-- **Paths:** Flask resolves `DCIM/` from the project root. The camera and HUD resolve `DCIM/` and `./assets/` from the **working directory**, so always start from the project root.
-- **Threads:** the camera loop runs on the main thread. Flask, the touchscreen (evdev) and the gpiozero callbacks each run on their own thread. Only the web trigger goes through `CameraState`. The button and touch callbacks call `capture_photo()` directly.
-- **Runtime settings** (gain, WB) live only in memory and reset to auto on restart. Static config is in `settings.py`.
-- **`GPIO_CONNECTED = False`** still creates the `Button`. Only presses are ignored.
-- **`hud.py`** gets `Path` only through `from settings import *`. Do not remove the "unused" `Path` from `settings.py` before the star imports are gone (ruff ignores it until then, see `ruff.toml`).
-- **Hardware facts** (display orientation, `buffer_count=2`, OS and library versions, memory): `docs/SPECS.md`. Rules about them: R8.
+- **Paths** in `settings.py` are absolute `Path`s from `PROJECT_ROOT` (R4); the app works from any working directory.
+- **Threads:** the camera loop runs on the main thread and is the only code that touches Picamera2 (R2). Flask, the touchscreen (evdev) and gpiozero callbacks run on their own threads and only call `request_capture(source)` / set `CameraState.shutter_requested`, a `threading.Event` the loop waits on.
+- **Capture** (`capture_photo`): one exposure via `switch_mode_and_capture_buffers`, DNG saved first, then JPG. It runs on the camera loop, so the HUD pauses while saving (~4–6 s) and requests made meanwhile are dropped. Why this API and not the others: `docs/SPECS.md`.
+- **Thumbnails** are made only on demand by `web/app.py` (first gallery view); the camera does not make them.
+- **Runtime settings** (gain, WB) live only in memory and reset to auto on restart. Ranges: `GAIN_*` / `COLOUR_TEMP_*` in `settings.py`, used by the API validation and the web sliders. `controls_for()` in `digital_camera.py` maps them to Picamera2 controls (`ColourTemperature`, not `ColourGains`).
+- **Hardware facts** (display orientation, `buffer_count=2`, capture memory, OS and library versions): `docs/SPECS.md`. Rules about them: R8.
 - **Pi folder** `~/workspace/pi-camera` is an old git clone. The desktop is the source of truth; do not use git on the Pi.
-- **New runtime setting:** add it in `CameraState`, apply it in `DigitalCamera.run()` (with a `_last_*` change check), and add it to `/api/settings` and `index.html`. Then update the README.
+- **New runtime setting:** follow `.claude/skills/feature/setting.md`.
 
 ## Known issues (not yet fixed)
 
-1. Paths depend on the working directory (see Gotchas).
-2. `capture_photo()` is called from several threads, with no lock.
-3. The JPG and the DNG are two separate exposures. Measured on the device (2026-11-14): one shot takes ~10 s from trigger to preview, of which the DNG exposure is ~5.5 s.
-4. The preview config rebuilt after a capture drops the `PREVIEW_ROTATE` transform: from the first photo on, the live preview is upside down on the display while the HUD stays correct (confirmed on the device; raw order changes from `SRGGB12` to `SBGGR12`). The manual `switch_mode()` is redundant. The still config correctly has no transform. (The audit in `audits/` recommends adding it; that would turn saved photos upside down in this build.) `preview_config["format"] = "YUV420"` has no effect: the device runs the preview as `XBGR8888`.
-5. Colour temperature → `ColourGains` is a placeholder (red and blue gains are equal).
-6. The web trigger can wait up to `HUD_UPDATE_INTERVAL` (1 s).
-7. `/dcim/thumbs/<path:filename>` reads and writes paths built from the URL without checking that they stay inside `DCIM/`.
-8. `/api/settings` has no range check (NaN and negative values pass).
-9. Photos taken in the same second overwrite each other (timestamps have 1 s resolution).
-10. Thumbnail code is duplicated in `digital_camera.py` and `web/app.py`.
-11. `from settings import *` in `digital_camera.py` and `hud.py` (`hud.py` only gets `Path` through it). `ruff.toml` ignores the resulting findings until this is fixed; remove those ignores then. 6 other ruff findings remain.
-12. The web sliders allow gain 0.1–0.9 and colour temperature 100–1900 K, outside the R7 ranges.
+1. The HUD pauses and shutter requests are dropped while a photo is saved (~4–6 s on the camera loop). Measured 2026-11-14: preview back 1.6–2.4 s after the trigger, JPG + DNG saved 5.8–8.1 s after it.
+2. When a capture fails, `/api/trigger` has already answered "ok"; the web page gets no feedback.

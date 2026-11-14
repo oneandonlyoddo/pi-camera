@@ -18,7 +18,7 @@ paths:
 
 ## R8 · Picamera2 conventions
 Check API names against the installed version first (`scripts/dev.sh --health` prints it).
-- **One exposure per shot:** capture once with `switch_mode_and_capture_request(still_config)`, then `request.save("main", jpg)` and `request.save_dng(dng)`, then `request.release()`. JPG and DNG must come from the same frame.
+- **One exposure per shot:** JPG and DNG come from the same frame, captured once with `switch_mode_and_capture_buffers(still_config, ["main", "raw"])` and saved with `camera.helpers`. Save the DNG first and free its buffer before the JPEG encode. Do not switch to the request-based capture APIs. Why: `docs/SPECS.md` (Still capture API).
 - **One place for each config:** preview and still configurations are each built by a single function.
 - **Orientation:** apply `PREVIEW_ROTATE` (`libcamera.Transform(hflip=1, vflip=1)`) to the preview configuration and the HUD only, **never to the still configuration**. The preview transform must survive every capture. Why: `docs/SPECS.md` (Enclosure).
 - **Keep `buffer_count=2` in the still configuration.** Do not change it without testing on the device. Why: `docs/SPECS.md` (Still capture memory).

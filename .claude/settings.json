@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(scripts/dev.sh --check)",
+      "Bash(scripts/dev.sh --test)",
+      "Bash(scripts/dev.sh --shoot)",
+      "Bash(scripts/dev.sh --health)",
+      "Bash(uvx --quiet ruff check:*)",
+      "Bash(uvx ruff check:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)"
+    ],
+    "ask": [
+      "Bash(scripts/dev.sh)",
+      "Bash(scripts/dev.sh --logs)",
+      "Bash(scripts/dev.sh --clean)",
+      "Bash(scripts/dev.sh --fg)",
+      "Bash(scripts/dev.sh --install)",
+      "Bash(ssh:*)",
+      "Bash(scp:*)"
+    ],
+    "deny": [
+      "Edit(DCIM/**)",
+      "Write(DCIM/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell|Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect_dcim.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/ruff_check.py\""
+          }
+        ]
+      }
+    ]
+  }
+}

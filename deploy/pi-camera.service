@@ -1,0 +1,22 @@
+# systemd unit for the camera. Installed by `scripts/dev.sh --install`,
+# which replaces __USER__ and __DIR__ with the Pi user and project path.
+[Unit]
+Description=Pi camera (preview, capture, web interface)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=__USER__
+WorkingDirectory=__DIR__
+ExecStart=/usr/bin/python3 __DIR__/main.py
+# print() output reaches the journal immediately instead of being buffered
+Environment=PYTHONUNBUFFERED=1
+# `systemctl stop` behaves like Ctrl+C, so cleanup() runs and the camera is released
+KillSignal=SIGINT
+TimeoutStopSec=10
+# main.py exits 0 even after an error, so restart regardless of exit code
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -15,22 +15,23 @@ Nothing runs on the desktop. The Pi is the only place this code can be verified.
 | `scripts/dev.sh --shoot` | web-trigger a capture on the running service, wait for JPG + DNG + thumbnail, copy JPG + thumbnail to `device-out/` |
 | `scripts/dev.sh --health` | service, picamera2 version, OS, memory, disk, throttling, console blanking, groups |
 
-Never run the interactive modes (`scripts/dev.sh` without flags, `--logs`, `--fg`); they block. Never run `--install` unless the user asks. Run commands exactly as written above (no `bash` prefix), so the permission rules match.
+Never run the interactive modes (`scripts/dev.sh` without flags, `--logs`, `--fg`); they block. Never run `--install` unless the user asks. Run commands exactly as written above (no `bash` prefix), so the permission rules match. They need the shell in the project root: if it is not, `cd` there in a separate call first.
 
 ## Mode: verify (default)
 
-1. **Lint** the changed Python files on the desktop: `uvx --quiet ruff check <files>`. Fix findings in code you changed.
-2. **Tests:** `scripts/dev.sh --test`. A test marked `xfail(strict=True)` that now passes ("XPASS") means a known issue is fixed: remove the marker, and the issue from CLAUDE.md and README (R9).
-3. **Restart:** `scripts/dev.sh --check`. On FAIL, read the log it printed, fix, repeat. Do not retry unchanged code.
-4. **Shoot** if the change touches capture, camera settings, the HUD, the web server, or `main.py`: `scripts/dev.sh --shoot`.
+Lint is not a step here: the ruff hook already checks every Python file you edit.
+
+1. **Tests:** `scripts/dev.sh --test`. A test marked `xfail(strict=True)` that now passes ("XPASS") means a known issue is fixed: remove the marker, and the issue from CLAUDE.md and README (R9).
+2. **Restart:** `scripts/dev.sh --check`. On FAIL, read the log it printed, fix, repeat. Do not retry unchanged code.
+3. **Shoot** if the change touches capture, camera settings, the HUD, the web server, or `main.py`: `scripts/dev.sh --shoot`.
    - Check the printed JPG size against `CAPTURE_WIDTH` x `CAPTURE_HEIGHT` in `settings.py`, and that the thumbnail fits 300x225.
-   - Look at `device-out/<name>.jpg` with the Read tool: not black or blown out, upright (saved photos are never rotated; `PREVIEW_ROTATE` is for the display only), no HUD burned into the photo (the HUD is a preview overlay only).
-5. **Settings changes** (gain, white balance, new runtime settings): set the value, shoot, compare with an auto shot, then reset to auto. Setting a value needs plain ssh, which asks the user for permission:
+   - Look at `device-out/<name>.jpg` with the Read tool: not black or blown out, upright (see R8), no HUD burned into the photo (the HUD is a preview overlay only).
+4. **Settings changes** (gain, white balance, new runtime settings): set the value, shoot, compare with an auto shot, then reset to auto. Setting a value needs plain ssh, which asks the user for permission:
    ```bash
    ssh "${PI_HOST:-pi}" "curl -fsS -X POST -H 'Content-Type: application/json' -d '{\"gain\": 8}' localhost:5000/api/settings"
    ```
    Reset with `{"gain": 0, "color_temp": 0}` afterwards.
-6. **Report** in this form:
+5. **Report** in this form:
    ```
    Verified on device: <what ran, with result: tests N passed / check OK / shot IMG_x 4056x3040 + DNG>
    Needs a person:     <button press, touch, how the preview/HUD looks on the screen, anything physical>

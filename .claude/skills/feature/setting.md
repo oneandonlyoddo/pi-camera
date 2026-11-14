@@ -11,7 +11,7 @@ For values the user changes while the camera runs (like gain and colour temperat
 5. **UI:** add the control to the Settings tab in `web/templates/index.html`, matching `docs/design/web.md`. Range from step 1; `0` shown as "Auto".
 6. **HUD:** if the value should show on the preview, follow `docs/design/hud.md`.
 7. **Tests** in `tests/test_web.py`: roundtrip, auto (`0`), and out-of-range/NaN rejected.
-8. **On device:** `/on-device` verify, including step 5 (set the value via curl, shoot, compare with auto, reset).
+8. **On device:** `/on-device` verify, including step 4 (set the value via curl, shoot, compare with auto, reset).
 9. **Docs:** README Configuration + API, `docs/FEATURES.md`.
 
 Settings live in memory and reset to auto on restart. If persistence is wanted, that is a separate design decision. Ask the user.

@@ -173,7 +173,7 @@ PREVIEW_WINDOW_Y = 0
 
 ### Preview
 ```python
-PREVIEW_ROTATE = True             # Rotate preview and HUD by 180 degrees (display mounted upside down)
+PREVIEW_ROTATE = True             # Rotate preview and HUD by 180 degrees (for an upside-down display)
 ```
 
 `PREVIEW_ROTATE` only affects what is shown on the display. Saved photos are never rotated.

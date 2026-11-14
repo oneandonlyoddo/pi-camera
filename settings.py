@@ -49,7 +49,7 @@ CAPTURE_HEIGHT = 3040
 PREVIEW_WINDOW_X = 0
 PREVIEW_WINDOW_Y = 0
 
-PREVIEW_ROTATE = True  # display is mounted upside down: rotate preview + HUD 180°, never saved photos (docs/SPECS.md)
+PREVIEW_ROTATE = True  # rotate preview + HUD 180° for the upside-down display; never saved photos (docs/SPECS.md)
 
 # ============================================================================
 # CAMERA TIMING

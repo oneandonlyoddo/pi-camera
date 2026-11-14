@@ -75,6 +75,11 @@ remote_now() { remote "date '+%Y-%m-%d %H:%M:%S'"; }
 
 log_since() { remote "sudo journalctl -u $SERVICE --since '$1' --no-pager -o cat"; }
 
+# Output of the current service run only (not the previous run's shutdown).
+log_current_run() {
+  remote "sudo journalctl _SYSTEMD_INVOCATION_ID=\$(systemctl show -p InvocationID --value $SERVICE) --no-pager -o cat"
+}
+
 fail_on_errors() {
   if grep -qE 'Traceback|Error' <<<"$1"; then
     echo "FAIL: errors in log"; exit 1
@@ -99,14 +104,14 @@ case "${1:-}" in
     ;;
   --check)
     sync_files
-    since="$(remote_now)"
     restart
     echo "-> waiting for camera startup (max 20 s)"
     remote "for i in \$(seq 40); do
-        sudo journalctl -u $SERVICE --since '$since' --no-pager -o cat | grep -qE 'Camera initialized|Traceback' && exit 0
+        sudo journalctl _SYSTEMD_INVOCATION_ID=\$(systemctl show -p InvocationID --value $SERVICE) --no-pager -o cat \
+          | grep -qE 'Camera initialized|Traceback' && exit 0
         sleep 0.5
       done; exit 0"
-    log="$(log_since "$since")"
+    log="$(log_current_run)"
     echo "$log"
     if ! remote "systemctl is-active --quiet $SERVICE"; then
       echo "FAIL: $SERVICE is not running"; exit 1

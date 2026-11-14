@@ -11,13 +11,7 @@ import threading
 import time
 from shared_state import CameraState
 from web.app import app, init_app
-
-# Import Camera Class (Fallback logic)
-try:
-    from digital_camera import DigitalCamera
-except ImportError:
-    print("Warning: Picamera2 dependencies not found. Falling back to WebcamCamera.")
-    from webcam_camera import WebcamCamera as DigitalCamera
+from digital_camera import DigitalCamera
 
 def run_flask(host='0.0.0.0', port=5000):
     """Run the Flask app in a thread."""

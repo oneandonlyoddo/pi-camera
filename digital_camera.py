@@ -5,8 +5,25 @@ from pathlib import Path
 from picamera2 import Picamera2, Preview
 import libcamera
 from gpiozero import Button
-from PIL import Image
-from settings import *
+from settings import (
+    CAPTURE_HEIGHT,
+    CAPTURE_WIDTH,
+    FILENAME_PREFIX,
+    FILENAME_TIMESTAMP_FORMAT,
+    GPIO_BUTTON_PIN,
+    GPIO_CONNECTED,
+    GPIO_DEBOUNCE_TIME,
+    HUD_UPDATE_INTERVAL,
+    JPG_EXTENSION,
+    PHOTOS_DIR,
+    PREVIEW_HEIGHT,
+    PREVIEW_ROTATE,
+    PREVIEW_WIDTH,
+    PREVIEW_WINDOW_X,
+    PREVIEW_WINDOW_Y,
+    RAW_EXTENSION,
+    TOUCHSCREEN_ENABLED,
+)
 from hud import HUD
 
 # Optional: Import touchscreen support
@@ -17,52 +34,58 @@ except ImportError:
     TOUCHSCREEN_AVAILABLE = False
     print("Note: evdev not available - touchscreen support disabled")
 
+
+def controls_for(gain, colour_temp):
+    """Picamera2 controls for the web settings. 0 means auto for both."""
+    controls = {"AeEnable": True} if gain == 0 else {"AeEnable": False, "AnalogueGain": float(gain)}
+    if colour_temp == 0:
+        controls["AwbEnable"] = True
+    else:
+        controls.update(AwbEnable=False, ColourTemperature=int(colour_temp))
+    return controls
+
+
 class DigitalCamera:
     """Digital camera controller for Raspberry Pi HQ Camera module."""
-    
 
-    def __init__(self, button_pin=GPIO_BUTTON_PIN, photos_dir=PHOTOS_DIR, camera_state=None):
+    def __init__(self, camera_state, button_pin=GPIO_BUTTON_PIN, photos_dir=PHOTOS_DIR):
         """
         Initialize the digital camera.
-        
+
         Args:
+            camera_state: Shared CameraState; every shutter source signals through it (R2)
             button_pin: GPIO pin number for the shutter button (BCM mode)
             photos_dir: Directory to save captured photos
-            camera_state: Shared CameraState object from the web app
         """
-        self.button = Button(button_pin, bounce_time=GPIO_DEBOUNCE_TIME)
-        self.button.when_pressed = self.button_pressed
+        self.camera_state = camera_state
         self.photos_dir = Path(photos_dir)
-        self.thumbnails_dir = Path(THUMBNAILS_DIR)
         self.camera = None
         self.running = False
         self.hud = HUD(PREVIEW_WIDTH, PREVIEW_HEIGHT)
-        self.camera_state = camera_state
+        self._last_settings = None  # (gain, colour_temp) last sent to the camera
 
-        # Track last applied settings to avoid unnecessary updates
-        self._last_gain = None
-        self._last_colour_temp = None
+        self.button = None
+        if GPIO_CONNECTED:
+            self.button = Button(button_pin, bounce_time=GPIO_DEBOUNCE_TIME)
+            self.button.when_pressed = lambda: self.request_capture("Shutter button")
 
         # Initialize touchscreen support (optional)
         self.touchscreen = None
         if TOUCHSCREEN_ENABLED and TOUCHSCREEN_AVAILABLE:
             try:
-                self.touchscreen = TouchScreen(on_touch_callback=self.touchscreen_pressed)
+                self.touchscreen = TouchScreen(on_touch_callback=lambda: self.request_capture("Touchscreen"))
             except Exception as e:
                 print(f"Could not initialize touchscreen: {e}")
         elif TOUCHSCREEN_ENABLED and not TOUCHSCREEN_AVAILABLE:
             print("Touchscreen enabled in settings but evdev not available")
 
-        # Create photos and thumbnails directories if they don't exist
         self.photos_dir.mkdir(parents=True, exist_ok=True)
-        self.thumbnails_dir.mkdir(parents=True, exist_ok=True)
         print(f"Photos will be saved to: {self.photos_dir}")
-        print(f"Thumbnails will be saved to: {self.thumbnails_dir}")
-        
+
     def setup_camera(self):
         """Initialize and configure the camera with optimal settings."""
         self.camera = Picamera2()
-        
+
         # Start the camera with fullscreen preview
         self.camera.start_preview(
             Preview.DRM,
@@ -71,106 +94,43 @@ class DigitalCamera:
             width=PREVIEW_WIDTH,
             height=PREVIEW_HEIGHT
         )
-        
-        # Preview config for the live view
+
+        # The only preview config; captures return to it, rotation included (R8)
         preview_config = self.camera.create_preview_configuration(main={"size": (PREVIEW_WIDTH, PREVIEW_HEIGHT)})
-        preview_config["format"] = "YUV420"
         if PREVIEW_ROTATE:
             preview_config["transform"] = libcamera.Transform(hflip=1, vflip=1)
-
-           # Start with preview configuration
         self.camera.configure(preview_config)
-        
+
         self.camera.start()
         time.sleep(1)
-        
+
         print("Camera initialized with fullscreen preview")
-      
-    def generate_thumbnail(self, jpg_path):
-        """
-        Generate a thumbnail for the given JPG image.
 
-        Args:
-            jpg_path: Path to the full-size JPG image
-        """
-        try:
-            # Open the image
-            img = Image.open(jpg_path)
+    def request_capture(self, source):
+        """Shutter callback for input threads: only signals the camera loop (R2)."""
+        print(f"{source} - capture requested")
+        self.camera_state.shutter_requested = True
 
-            # Create thumbnail (maintains aspect ratio)
-            img.thumbnail((THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT), Image.Resampling.LANCZOS)
-
-            # Save thumbnail with same filename in thumbs directory
-            thumb_path = self.thumbnails_dir / jpg_path.name
-            img.save(thumb_path, "JPEG", quality=THUMBNAIL_QUALITY)
-
-            print(f"  Thumbnail: {thumb_path}")
-
-        except Exception as e:
-            print(f"✗ Error generating thumbnail: {e}")
-
-    def button_pressed(self):
-        """
-        Callback function triggered when hardware button is pressed.
-        """
-        if self.running and GPIO_CONNECTED:
-            print("Shutter button pressed - capturing image...")
-            self.capture_photo()
-
-    def touchscreen_pressed(self):
-        """
-        Callback function triggered when touchscreen is touched.
-        """
-        if self.running:
-            print("Touchscreen touched - capturing image...")
-            self.capture_photo()
-            
     def capture_photo(self):
-        """Capture and save a photo in both JPG and RAW formats."""
+        """Capture one exposure and save it as JPG and DNG (same frame)."""
+        timestamp = datetime.datetime.now().strftime(FILENAME_TIMESTAMP_FORMAT)
+        jpg_path = self.photos_dir / f"{FILENAME_PREFIX}_{timestamp}{JPG_EXTENSION}"
+        raw_path = jpg_path.with_suffix(RAW_EXTENSION)
+        # No transform: saved photos are upright, PREVIEW_ROTATE is for the display only (R8)
+        still_config = self.camera.create_still_configuration(
+            main={"size": (CAPTURE_WIDTH, CAPTURE_HEIGHT)},
+            raw={"size": (CAPTURE_WIDTH, CAPTURE_HEIGHT)},
+            buffer_count=2,  # needed on the Pi Zero (docs/SPECS.md)
+        )
         try:
-            # Generate timestamp-based filename
-            timestamp = datetime.datetime.now().strftime(FILENAME_TIMESTAMP_FORMAT)
-            jpg_path = self.photos_dir / f"{FILENAME_PREFIX}_{timestamp}{JPG_EXTENSION}"
-            raw_path = self.photos_dir / f"{FILENAME_PREFIX}_{timestamp}{RAW_EXTENSION}"
-            
-            # Switch to still configuration for high-res capture
-            still_config = self.camera.create_still_configuration(
-                main={"size": (CAPTURE_WIDTH, CAPTURE_HEIGHT)},
-                raw={"size": (CAPTURE_WIDTH, CAPTURE_HEIGHT)},
-                buffer_count=2
-            )
-            
-            # Capture with both JPG and RAW
-            self.camera.switch_mode_and_capture_file(
-                still_config,
-                str(jpg_path),
-                name="main"
-            )
-            
-            # Capture RAW (DNG format)
-            self.camera.switch_mode_and_capture_file(
-                still_config,
-                str(raw_path),
-                name="raw"
-            )
-            
-            print(f"✓ Photo saved:")
-            print(f"  JPG: {jpg_path}")
-            print(f"  RAW: {raw_path}")
-
-            # Generate thumbnail
-            self.generate_thumbnail(jpg_path)
-
-            # Brief pause before returning to preview
-            time.sleep(CAPTURE_PAUSE_DURATION)
-            
-            # Switch back to preview mode
-            preview_config = self.camera.create_preview_configuration(
-                main={"size": (PREVIEW_WIDTH, PREVIEW_HEIGHT)},
-                display="main"
-            )
-            self.camera.switch_mode(preview_config)
-            
+            # Copies both frames, then returns to the preview. Holding the request instead
+            # (switch_mode_capture_request_and_stop) fails with ENOMEM on the Pi Zero (docs/SPECS.md).
+            (main, raw), metadata = self.camera.switch_mode_and_capture_buffers(still_config, ["main", "raw"])
+            helpers = self.camera.helpers
+            helpers.save_dng(raw, metadata, still_config["raw"], str(raw_path))
+            del raw  # free ~18 MB before the JPEG encode needs memory
+            helpers.save(helpers.make_image(main, still_config["main"]), metadata, str(jpg_path))
+            print(f"✓ Photo saved: {jpg_path.name} + {raw_path.name}")
         except Exception as e:
             print(f"✗ Error capturing photo: {e}")
 
@@ -179,7 +139,7 @@ class DigitalCamera:
         try:
             print("Starting Raspberry Pi Digital Camera...")
             print("Press Ctrl+C to exit")
-            
+
             self.setup_camera()
             self.running = True
 
@@ -187,61 +147,32 @@ class DigitalCamera:
             if self.touchscreen:
                 self.touchscreen.start()
 
-            # Keep the program running and update HUD
             while self.running:
-                # Check for web shutter request
-                if self.camera_state and self.camera_state.consume_shutter_request():
-                    print("Web shutter request received - capturing image...")
+                if self.camera_state.consume_shutter_request():
+                    print("Capturing image...")
                     self.capture_photo()
+                    self.camera_state.consume_shutter_request()  # drop taps made during the capture
 
-                # Apply camera settings if changed
-                if self.camera_state:
-                    gain = self.camera_state.analogue_gain
-                    temp = self.camera_state.colour_temperature
-
-                    # Only apply settings if they've changed
-                    controls = {}
-
-                    if gain != self._last_gain:
-                        if gain == 0.0:
-                            # Auto gain - use AeEnable
-                            controls["AeEnable"] = True
-                        else:
-                            # Manual gain - disable auto exposure and set gain
-                            controls["AeEnable"] = False
-                            controls["AnalogueGain"] = float(gain)
-                        self._last_gain = gain
-                        print(f"Applied analogue gain: {'Auto' if gain == 0.0 else gain}")
-
-                    if temp != self._last_colour_temp:
-                        if temp == 0:
-                            # Auto white balance
-                            controls["AwbEnable"] = True
-                        else:
-                            # Manual white balance with color temperature
-                            controls["AwbEnable"] = False
-                            controls["ColourGains"] = (temp / 4000.0, temp / 4000.0)  # Simplified color gain calculation
-                        self._last_colour_temp = temp
-                        print(f"Applied colour temperature: {'Auto' if temp == 0 else str(temp) + 'K'}")
-
-                    # Apply controls if any changed
-                    if controls:
-                        try:
-                            self.camera.set_controls(controls)
-                        except Exception as e:
-                            print(f"Warning: Failed to apply camera controls: {e}")
+                settings_now = (self.camera_state.analogue_gain, self.camera_state.colour_temperature)
+                if settings_now != self._last_settings:
+                    try:
+                        self.camera.set_controls(controls_for(*settings_now))
+                        print(f"Applied gain/colour temperature: {settings_now} (0 = auto)")
+                    except Exception as e:
+                        print(f"Warning: Failed to apply camera controls: {e}")
+                    self._last_settings = settings_now
 
                 self.hud.update(self.camera)
-                time.sleep(HUD_UPDATE_INTERVAL)
-                
+                self.camera_state.wait_for_shutter(HUD_UPDATE_INTERVAL)
+
         except KeyboardInterrupt:
             print("\nShutting down camera...")
             self.cleanup()
-            
+
         except Exception as e:
             print(f"Error: {e}")
             self.cleanup()
-            
+
     def cleanup(self):
         """Clean up resources on exit."""
         self.running = False
@@ -256,8 +187,7 @@ class DigitalCamera:
             self.camera.stop()
             self.camera.close()
 
-        # Close button
-        self.button.close()
+        if self.button:
+            self.button.close()
 
         print("Camera stopped. Goodbye!")
-

@@ -1,7 +1,20 @@
 import datetime
+from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
-from settings import *
+from settings import (
+    HUD_BACKGROUND_IMAGE_PATH,
+    HUD_COLOR_BLACK,
+    HUD_COLOR_WHITE,
+    HUD_FONT_PATH,
+    HUD_FONT_SIZE,
+    HUD_PADDING_H,
+    HUD_PADDING_W,
+    HUD_TIME_FORMAT,
+    PREVIEW_HEIGHT,
+    PREVIEW_ROTATE,
+    PREVIEW_WIDTH,
+)
 
 class HUD:
     """Head-Up Display (HUD) controller for the camera overlay."""
@@ -33,7 +46,13 @@ class HUD:
                     print(f"Warning: HUD background file not found: {bg_path}")
             except Exception as e:
                 print(f"Error loading HUD background: {e}")
-        
+
+        # Try to use a nice font, fall back to default if not available
+        try:
+            self.font = ImageFont.truetype(str(HUD_FONT_PATH), HUD_FONT_SIZE)
+        except OSError:
+            self.font = ImageFont.load_default()
+
     def update(self, camera):
         """
         Update the HUD overlay with current time, date, and camera metadata.
@@ -62,15 +81,11 @@ class HUD:
             gain = metadata.get("AnalogueGain", 0)
             temp = metadata.get("ColourTemperature", 0)
             meta_str = f"Exp: {exp_ms:.1f}ms - Gain: {gain:.2f}x - WB: {temp:.0f}K"
-        except Exception as e:
+        except Exception:
             meta_str = "Waiting..."
-        
-        # Try to use a nice font, fall back to default if not available
-        try:
-            font = ImageFont.truetype(HUD_FONT_PATH, HUD_FONT_SIZE)
-        except:
-            font = ImageFont.load_default()
-        
+
+        font = self.font
+
         # Calculate date text dimensions
         time_bbox = draw.textbbox((0, 0), time_str, font=font)
         time_width = time_bbox[2] - time_bbox[0]

@@ -81,7 +81,7 @@ log_current_run() {
 }
 
 fail_on_errors() {
-  if grep -qE 'Traceback|Error' <<<"$1"; then
+  if grep -qiE 'traceback|error' <<<"$1"; then  # -i: libcamera logs "ERROR"
     echo "FAIL: errors in log"; exit 1
   fi
 }
@@ -130,20 +130,25 @@ case "${1:-}" in
   --shoot)
     since="$(remote_now)"
     echo "-> triggering shutter"
-    # Wait (max 30 s) for a new JPG whose thumbnail exists, i.e. the capture finished.
+    # Wait (max 30 s) for the camera's "Photo saved" line for a new JPG: JPG and DNG are then complete.
     name="$(remote "cd '$PI_DIR/DCIM' || exit 1
       before=\$(ls -1t *.jpg 2>/dev/null | head -1)
+      t0=\$(date +%s)
       curl -fsS -X POST http://localhost:5000/api/trigger >/dev/null || exit 1
       for i in \$(seq 60); do
         sleep 0.5
         new=\$(ls -1t *.jpg 2>/dev/null | head -1)
-        if [ -n \"\$new\" ] && [ \"\$new\" != \"\$before\" ] && [ -e \"thumbs/\$new\" ]; then
-          sleep 0.5; echo \"\$new\"; exit 0
+        log=\$(sudo journalctl -u $SERVICE --since '$since' -o cat)
+        echo \"\$log\" | grep -q 'Error capturing photo' && exit 1
+        if [ -n \"\$new\" ] && [ \"\$new\" != \"\$before\" ] && echo \"\$log\" | grep -q \"Photo saved: \$new\"; then
+          echo \"trigger to saved: <= \$((\$(date +%s) - t0 + 1)) s (log has exact times)\" >&2; echo \"\$new\"; exit 0
         fi
       done
-      exit 1")" || { echo "FAIL: no new photo within 30 s"; log_since "$since"; exit 1; }
+      exit 1")" || { echo "FAIL: capture error or no new photo within 30 s"; log_since "$since"; exit 1; }
     stem="${name%.jpg}"
     echo "-> captured $stem"
+    # Thumbnails are made on first request, like the gallery does
+    remote "curl -fsS -o /dev/null http://localhost:5000/dcim/thumbs/$name" || { echo "FAIL: thumbnail request"; exit 1; }
     remote "cd '$PI_DIR/DCIM' && ls -l '$name' '$stem.dng' 'thumbs/$name' 2>&1
       python3 -c \"from PIL import Image; print('jpg size:', Image.open('$name').size); print('thumb size:', Image.open('thumbs/$name').size)\""
     mkdir -p "$OUT_DIR"

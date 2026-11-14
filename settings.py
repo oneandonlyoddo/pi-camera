@@ -5,6 +5,8 @@ All configurable parameters for the Raspberry Pi Digital Camera.
 
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parent  # all paths below are absolute (R4)
+
 # ============================================================================
 # GPIO CONFIGURATION
 # ============================================================================
@@ -20,10 +22,10 @@ TOUCHSCREEN_ENABLED = True  # Enable touchscreen shutter trigger (requires evdev
 # ============================================================================
 # FILE PATHS
 # ============================================================================
-PHOTOS_DIR = "DCIM"  # Directory to save captured photos
-THUMBNAILS_DIR = "DCIM/thumbs"  # Directory for thumbnail cache
+PHOTOS_DIR = PROJECT_ROOT / "DCIM"  # Directory to save captured photos
+THUMBNAILS_DIR = PHOTOS_DIR / "thumbs"  # Directory for thumbnail cache
 FILENAME_PREFIX = "IMG"  # Prefix for saved image files
-FILENAME_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"  # Timestamp format for filenames
+FILENAME_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S_%f"  # %f (microseconds): two shots never share a name (R11)
 JPG_EXTENSION = ".jpg"  # JPEG file extension
 RAW_EXTENSION = ".dng"  # RAW (DNG) file extension
 
@@ -54,14 +56,21 @@ PREVIEW_ROTATE = True  # rotate preview + HUD 180° for the upside-down display;
 # ============================================================================
 # CAMERA TIMING
 # ============================================================================
-CAPTURE_PAUSE_DURATION = 0.5  # Seconds to pause after capture before returning to preview
-HUD_UPDATE_INTERVAL = 1.0  # Seconds between HUD updates
+HUD_UPDATE_INTERVAL = 1.0  # Seconds between HUD updates (a shutter request wakes the loop early)
+
+# ============================================================================
+# RUNTIME SETTINGS (set from the web interface; 0 = auto)
+# ============================================================================
+GAIN_MIN = 1.0  # Analogue gain range of the HQ camera
+GAIN_MAX = 16.0
+COLOUR_TEMP_MIN = 2000  # Colour temperature range in Kelvin
+COLOUR_TEMP_MAX = 8000
 
 # ============================================================================
 # HUD (HEADS-UP DISPLAY) SETTINGS
 # ============================================================================
 # Font settings
-HUD_FONT_PATH = "./assets/fonts/JetBrainsMono-Medium.ttf"
+HUD_FONT_PATH = PROJECT_ROOT / "assets" / "fonts" / "JetBrainsMono-Medium.ttf"
 HUD_FONT_SIZE = 24
 
 # Date/Time format strings
@@ -78,4 +87,4 @@ HUD_COLOR_BLACK = (0, 0, 0, 255)  # Black text for settings
 # HUD Background Image
 # Path to a transparent PNG to use as the HUD background (optional)
 # Set to None to use the default generated background
-HUD_BACKGROUND_IMAGE_PATH = "./assets/hud_grid.png"
+HUD_BACKGROUND_IMAGE_PATH = PROJECT_ROOT / "assets" / "hud_grid.png"

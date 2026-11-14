@@ -6,7 +6,6 @@ import pytest
 from conftest import ROOT
 
 
-@pytest.mark.xfail(strict=True, reason="Known issue 1 / R4: paths relative to working directory")
 @pytest.mark.parametrize(
     "name, expected",
     [

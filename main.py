@@ -8,7 +8,6 @@ Saves images in JPG and RAW formats. Includes a Flask web server for remote acce
 """
 
 import threading
-import time
 from shared_state import CameraState
 from web.app import app, init_app
 from digital_camera import DigitalCamera

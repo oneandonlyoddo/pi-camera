@@ -1,7 +1,6 @@
 
 import threading
-from pathlib import Path
-from evdev import InputDevice, categorize, ecodes, list_devices
+from evdev import InputDevice, ecodes, list_devices
 
 class TouchScreen:
     """

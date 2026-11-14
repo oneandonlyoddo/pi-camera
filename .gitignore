@@ -1,3 +1,9 @@
 DCIM
 
 __pycache__
+# Claude Code personal overrides
+.claude/settings.local.json
+
+# On-device captures copied back by scripts/dev.sh --shoot
+device-out/
+.pytest_cache/

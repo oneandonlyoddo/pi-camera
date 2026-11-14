@@ -34,19 +34,19 @@
 
                 <div class="control-group">
                     <label for="gain-slider">Analogue Gain: <span id="gain-val">Auto</span></label>
-                    <input type="range" id="gain-slider" min="0" max="16" step="0.1" value="0">
+                    <input type="range" id="gain-slider" min="0" max="{{ gain_max }}" step="0.1" value="0">
                     <div class="slider-labels">
                         <span>Auto</span>
-                        <span>16x</span>
+                        <span>{{ gain_max|int }}x</span>
                     </div>
                 </div>
 
                 <div class="control-group">
                     <label for="temp-slider">Color Temp: <span id="temp-val">Auto</span></label>
-                    <input type="range" id="temp-slider" min="0" max="8000" step="100" value="0">
+                    <input type="range" id="temp-slider" min="0" max="{{ temp_max }}" step="100" value="0">
                     <div class="slider-labels">
                         <span>Auto</span>
-                        <span>8000K</span>
+                        <span>{{ temp_max }}K</span>
                     </div>
                 </div>
             </div>
@@ -121,7 +121,7 @@
             });
 
             gainSlider.addEventListener('change', (e) => {
-                updateSettings({ gain: e.target.value });
+                updateSettings({ gain: snapToMin(e.target, {{ gain_min }}) });
             });
 
             tempSlider.addEventListener('input', (e) => {
@@ -130,7 +130,7 @@
             });
 
             tempSlider.addEventListener('change', (e) => {
-                updateSettings({ color_temp: e.target.value });
+                updateSettings({ color_temp: snapToMin(e.target, {{ temp_min }}) });
             });
 
             // Load initial settings
@@ -145,6 +145,15 @@
                         document.getElementById('temp-val').innerText = data.color_temp == 0 ? 'Auto' : data.color_temp + 'K';
                     }
                 });
+        }
+
+        // 0 = auto; the camera rejects values between 0 and its minimum, so jump to the minimum
+        function snapToMin(slider, min) {
+            if (slider.value > 0 && slider.value < min) {
+                slider.value = min;
+                slider.dispatchEvent(new Event('input'));  // refresh the label
+            }
+            return slider.value;
         }
 
         function updateSettings(data) {

@@ -7,7 +7,18 @@ from PIL import Image
 
 # Add parent directory to path to allow importing settings
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from settings import PHOTOS_DIR, THUMBNAILS_DIR, JPG_EXTENSION, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, THUMBNAIL_QUALITY
+from settings import (  # noqa: E402 (needs the sys.path line above)
+    COLOUR_TEMP_MAX,
+    COLOUR_TEMP_MIN,
+    GAIN_MAX,
+    GAIN_MIN,
+    JPG_EXTENSION,
+    PHOTOS_DIR,
+    THUMBNAIL_HEIGHT,
+    THUMBNAIL_QUALITY,
+    THUMBNAIL_WIDTH,
+    THUMBNAILS_DIR,
+)
 
 app = Flask(__name__)
 camera_state = None  # Global to hold the shared state
@@ -30,6 +41,8 @@ def generate_thumbnail_if_missing(filename):
     Returns:
         Path to the thumbnail file
     """
+    if Path(filename).name != filename:  # bare names only: never read or write outside DCIM/ (R7)
+        raise FileNotFoundError(filename)
     thumb_path = thumbnails_path / filename
 
     # If thumbnail already exists, return it
@@ -58,11 +71,9 @@ def generate_thumbnail_if_missing(filename):
         print(f"Error generating thumbnail for {filename}: {e}")
         raise
 
-# Ensure the PHOTOS_DIR and THUMBNAILS_DIR exist
-# Resolve paths relative to the project root (parent of web/ directory)
-project_root = Path(__file__).parent.parent.resolve()
-photos_path = (project_root / PHOTOS_DIR).resolve()
-thumbnails_path = (project_root / THUMBNAILS_DIR).resolve()
+# Absolute paths from settings.py (R4); module-level so tests can point them elsewhere
+photos_path = PHOTOS_DIR
+thumbnails_path = THUMBNAILS_DIR
 
 print(f"Flask serving photos from: {photos_path}")
 print(f"Flask serving thumbnails from: {thumbnails_path}")
@@ -82,7 +93,9 @@ if not thumbnails_path.exists():
 @app.route('/')
 def index():
     """Render the main gallery page."""
-    return render_template('index.html')
+    return render_template(
+        'index.html', gain_min=GAIN_MIN, gain_max=GAIN_MAX, temp_min=COLOUR_TEMP_MIN, temp_max=COLOUR_TEMP_MAX
+    )
 
 @app.route('/api/photos')
 def get_photos():
@@ -143,6 +156,21 @@ def trigger_shutter():
         return jsonify({"status": "ok", "message": "Shutter requested"})
     return jsonify({"status": "error", "message": "Camera state not initialized"}), 500
 
+def parse_setting(data, key, low, high):
+    """`data[key]` as a float that is 0 (auto) or within [low, high]; None if absent.
+
+    Raises ValueError/TypeError for anything else, including booleans, NaN and inf (R7).
+    """
+    if key not in data:
+        return None
+    value = data[key]
+    if isinstance(value, bool):
+        raise ValueError(f"{key} must be a number")
+    value = float(value)
+    if not (value == 0 or low <= value <= high):  # NaN fails both comparisons
+        raise ValueError(f"{key} must be 0 (auto) or between {low} and {high}")
+    return value
+
 @app.route('/api/settings', methods=['POST'])
 def update_settings():
     """Update camera settings (gain, color temp)."""
@@ -153,20 +181,18 @@ def update_settings():
     if not data:
         return jsonify({"status": "error", "message": "No data provided"}), 400
     
-    if 'gain' in data:
-        try:
-            val = float(data['gain'])
-            camera_state.analogue_gain = val
-        except ValueError:
-            pass
-            
-    if 'color_temp' in data:
-        try:
-            val = int(data['color_temp'])
-            camera_state.colour_temperature = val
-        except ValueError:
-            pass
-            
+    try:
+        gain = parse_setting(data, 'gain', GAIN_MIN, GAIN_MAX)
+        temp = parse_setting(data, 'color_temp', COLOUR_TEMP_MIN, COLOUR_TEMP_MAX)
+    except (TypeError, ValueError) as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+    # Only store once both values are valid, so a bad request changes nothing
+    if gain is not None:
+        camera_state.analogue_gain = gain
+    if temp is not None:
+        camera_state.colour_temperature = int(temp)
+
     return jsonify({
         "status": "ok", 
         "gain": camera_state.analogue_gain,

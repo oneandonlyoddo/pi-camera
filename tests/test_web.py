@@ -52,7 +52,6 @@ def test_thumbnail_for_missing_original_404(client):
     assert client.get("/dcim/thumbs/nope.jpg").status_code == 404
 
 
-@pytest.mark.xfail(strict=True, reason="Known issue 7 / R7: filename not confined to DCIM")
 def test_thumbnail_rejects_path_outside_dcim(client, dcim, make_jpg, tmp_path):
     import web.app as webapp
 
@@ -89,17 +88,22 @@ def test_settings_empty_body_400(client):
     assert client.post("/api/settings", json={}).status_code == 400
 
 
-@pytest.mark.xfail(strict=True, reason="Known issue 8 / R7: no range check")
 @pytest.mark.parametrize(
     "payload",
     [
         {"gain": -5},
         {"gain": 100},
         {"gain": "nan"},
+        {"gain": "inf"},
         {"gain": 0.5},
+        {"gain": True},
+        {"gain": "abc"},
+        {"gain": None},
         {"color_temp": -1},
         {"color_temp": 500},
         {"color_temp": 50000},
+        {"color_temp": True},
+        {"gain": 2.0, "color_temp": 50000},  # one bad value rejects the whole request
     ],
 )
 def test_settings_rejects_out_of_range(client, state, payload):

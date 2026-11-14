@@ -136,7 +136,8 @@ class DigitalCamera:
             # Switch to still configuration for high-res capture
             still_config = self.camera.create_still_configuration(
                 main={"size": (CAPTURE_WIDTH, CAPTURE_HEIGHT)},
-                raw={"size": (CAPTURE_WIDTH, CAPTURE_HEIGHT)}
+                raw={"size": (CAPTURE_WIDTH, CAPTURE_HEIGHT)},
+                buffer_count=2
             )
             
             # Capture with both JPG and RAW

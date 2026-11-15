@@ -10,13 +10,14 @@
 
 <body>
     <header>
-        <h1>Camera Roll</h1>
+        <h1>Gallery</h1>
+        <span id="photo-count" class="pill"></span>
     </header>
 
     <div id="views">
         <!-- Gallery View -->
         <main id="gallery-view" class="view active">
-            <div id="gallery" class="gallery-grid">
+            <div id="gallery">
                 <!-- Photos will be loaded here -->
                 <div class="loading">Loading photos...</div>
             </div>
@@ -77,6 +78,7 @@
     <div id="modal" class="modal" onclick="closeModal()">
         <span class="close">&times;</span>
         <img class="modal-content" id="modal-img">
+        <span class="modal-caption" id="modal-caption"></span>
     </div>
 
     <script>
@@ -178,7 +180,23 @@
                         return;
                     }
 
+                    document.getElementById('photo-count').innerText = files.length;
+
+                    // Files come newest first, so one group per date in order
+                    let currentLabel = null;
+                    let grid = null;
                     files.forEach(filename => {
+                        const label = dateLabel(filename);
+                        if (label !== currentLabel) {
+                            currentLabel = label;
+                            const heading = document.createElement('h2');
+                            heading.className = 'date-heading';
+                            heading.innerText = label;
+                            grid = document.createElement('div');
+                            grid.className = 'gallery-grid';
+                            gallery.append(heading, grid);
+                        }
+
                         const imgContainer = document.createElement('div');
                         imgContainer.className = 'photo-item';
 
@@ -187,12 +205,10 @@
                         img.src = `/dcim/thumbs/${filename}`;
                         img.alt = filename;
                         img.loading = 'lazy'; // Lazy load images
-                        // Store full image path in data attribute
-                        img.dataset.fullImage = `/dcim/${filename}`;
-                        img.onclick = () => openModal(img.dataset.fullImage);
+                        img.onclick = () => openModal(`/dcim/${filename}`, filename);
 
                         imgContainer.appendChild(img);
-                        gallery.appendChild(imgContainer);
+                        grid.appendChild(imgContainer);
                     });
                 })
                 .catch(err => {
@@ -201,11 +217,25 @@
                 });
         }
 
-        function openModal(src) {
+        // Date from the IMG_YYYYMMDD_HHMMSS filename; "Today" / "Yesterday" / "Fri 14 Nov 2026"
+        function dateLabel(filename) {
+            const m = filename.match(/(\d{4})(\d{2})(\d{2})_\d{6}/);
+            if (!m) return 'Other';
+            const day = new Date(m[1], m[2] - 1, m[3]);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const diff = Math.round((today - day) / 86400000);
+            if (diff === 0) return 'Today';
+            if (diff === 1) return 'Yesterday';
+            return day.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        function openModal(src, filename) {
             const modal = document.getElementById('modal');
             const modalImg = document.getElementById('modal-img');
             modal.style.display = "flex";
             modalImg.src = src;
+            document.getElementById('modal-caption').innerText = filename;
         }
 
         function closeModal() {

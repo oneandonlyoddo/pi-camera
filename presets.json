@@ -1,0 +1,5 @@
+{
+  "Acros": {"mono": true, "highlight": 2, "shadow": 2, "sharpness": 2, "exposure": 1},
+  "Chrome": {"color": 2, "highlight": -1, "shadow": 1, "sharpness": 2, "wb_red": 1, "wb_blue": -1, "exposure": 0.7},
+  "Portra": {"color": 2, "highlight": -1, "shadow": -1, "sharpness": -2, "wb_red": 2, "wb_blue": -4}
+}

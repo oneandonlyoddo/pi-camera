@@ -77,6 +77,18 @@ COLOUR_TEMP_MIN = 2000  # Colour temperature range in Kelvin
 COLOUR_TEMP_MAX = 8000
 
 # ============================================================================
+# PRESETS (film simulation recipes; chosen in the touch menu, saved in SETTINGS_FILE)
+# ============================================================================
+PRESETS_FILE = PROJECT_ROOT / "presets.json"  # {name: {color, mono, highlight, shadow, sharpness, wb_red, wb_blue, exposure}}
+PRESET_NAME_MAX = 12  # characters; longer names don't fit a menu button
+TUNING_FILE = "imx477.json"  # libcamera tuning file the presets modify (HQ camera)
+# What one Fuji recipe step does. Guesses to tune by eye against docs/presets/ sample shots.
+PRESET_COLOR_STEP = 0.1  # Saturation per "color" step (1.0 = neutral)
+PRESET_SHARPNESS_STEP = 0.25  # Sharpness per step (1.0 = neutral)
+PRESET_TONE_STEP = 0.02  # max tone curve shift per highlight/shadow step, fraction of full output
+PRESET_WB_STEP = 0.05  # red/blue gain factor per WB shift step
+
+# ============================================================================
 # HUD (HEADS-UP DISPLAY) SETTINGS
 # ============================================================================
 # Font settings

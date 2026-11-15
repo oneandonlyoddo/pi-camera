@@ -17,15 +17,16 @@ The web server and the camera loop communicate through a lock-protected `CameraS
 ### Camera
 - 📸 **Hardware shutter button** via GPIO (enable with `GPIO_CONNECTED = True`)
 - 👆 **Touchscreen trigger**: touch anywhere outside the MENU button to capture (optional, Pi only)
-- 📋 **Touch menu**: MENU button (bottom right) to choose capture resolution and format
+- 📋 **Touch menu**: MENU button (bottom right) to choose capture resolution, format and preset
+- 🎨 **Presets / film simulation**: Fuji-style recipes from `presets.json`, applied to the live preview and the JPG (see [Presets](#presets))
 - 🖥️ **Fullscreen preview** on the connected display (DRM preview, 800x480)
 - 📷 **Capture resolution**: 4056x3040 (12 MP) or 2028x1520 (3 MP), both the full field of view
 - 🎞️ **Capture format**: JPG, RAW (DNG) or JPG + RAW (same frame)
-- 💾 **Settings survive a restart**: gain, white balance, resolution and format are saved to `camera_settings.json`
+- 💾 **Settings survive a restart**: gain, white balance, resolution, format and preset are saved to `camera_settings.json`
 - 🖼️ **Thumbnails** generated on first view in the gallery (`DCIM/thumbs/`)
 - 🕒 **Timestamped filenames**
 - 🏷️ **EXIF in JPG and DNG**: capture time, exposure, ISO, exposure/white-balance mode, sensor model, optional artist/copyright
-- 📊 **HUD overlay** with time, date, exposure, gain, white balance, capture resolution and format
+- 📊 **HUD overlay** with time, date, exposure, gain, white balance, capture resolution and format, and the preset name (top centre)
 
 ### Web interface
 - 🖼️ **Gallery**: thumbnail grid with lazy loading, full-size lightbox on tap
@@ -144,7 +145,7 @@ The current resolution and format are shown top left. DNG-only shots are not lis
    - **Analogue gain**: 0 = auto, up to 16x (step 0.1)
    - **Colour temperature**: 0 = auto, up to 8000 K (step 100)
 
-Gain, colour temperature, resolution and format are saved to `camera_settings.json` in the project folder whenever they change, and restored at startup. Delete the file to go back to the defaults (auto, 12MP, JPG+RAW). Invalid values in it are ignored with a warning in the log. `scripts/dev.sh` never copies or cleans this file.
+Gain, colour temperature, resolution, format and preset are saved to `camera_settings.json` in the project folder whenever they change, and restored at startup. Delete the file to go back to the defaults (auto, 12MP, JPG+RAW, no preset). Invalid values in it are ignored with a warning in the log. `scripts/dev.sh` never copies or cleans this file.
 
 **Security:** the web server listens on all interfaces (`0.0.0.0:5000`) with no authentication. Use it on a trusted network only.
 
@@ -152,9 +153,29 @@ Gain, colour temperature, resolution and format are saved to `camera_settings.js
 
 Press `Ctrl+C`. When running as a service: `sudo systemctl stop pi-camera`.
 
+## Presets
+
+Presets are Fuji-style film simulation recipes, defined in `presets.json` (project root) and picked in the touch menu (PRESET row; NONE = off). The active preset's name shows in the top centre of the HUD. They change the live preview and the JPG; the DNG stays untouched.
+
+```json
+{"Portra": {"color": 2, "highlight": -1, "shadow": -1, "sharpness": -2, "wb_red": 2, "wb_blue": -4}}
+```
+
+| Key | Range | Does |
+|---|---|---|
+| `color` | -4..4 | saturation, 0.1 per step |
+| `mono` | true/false | black and white (overrides `color`) |
+| `highlight` / `shadow` | -4..4 | tone curve: + brightens highlights / darkens shadows |
+| `sharpness` | -4..4 | 0.25 per step |
+| `wb` | 2000..8000 | fixed white balance in Kelvin (like "Daylight" / "5500K" in a recipe); missing = auto. A manual WB from the web page overrides it |
+| `wb_red` / `wb_blue` | -9..9 | shift on top of auto WB or the preset's `wb`, 5% gain per step (not on top of a web manual WB) |
+| `exposure` | -3..3 | exposure compensation in EV; only with auto gain |
+
+Missing keys are neutral. Names are at most 12 characters; invalid presets are skipped with a warning in the log. The step sizes are guesses, set in `settings.py` (`PRESET_*_STEP`); tune them by eye against the sample shots in `docs/presets/`. Highlight, shadow and WB shift live in the camera's tuning file, so switching a preset reopens the camera (~1.6 s, the preview freezes meanwhile). Not supported yet: film colour (Classic Chrome's palette), Acros+R/G filters, grain, Colour Chrome, clarity, noise reduction, dynamic range.
+
 ## Configuration
 
-All static settings are in `settings.py`. Gain, colour temperature, resolution and format are runtime settings (web interface / touch menu), saved in `camera_settings.json`; `settings.py` only defines their ranges and choices.
+All static settings are in `settings.py`. Gain, colour temperature, resolution, format and preset are runtime settings (web interface / touch menu), saved in `camera_settings.json`; `settings.py` only defines their ranges and choices.
 
 ### GPIO
 ```python

@@ -56,7 +56,8 @@ def test_buttons_do_not_overlap_and_fit_the_screen(state):
 
 def test_one_option_selected_per_row(state):
     selected = [action for _r, _l, sel, action in menu.buttons(state) if sel and action[0] != "menu_open"]
-    assert selected == [("capture_resolution", CAPTURE_RESOLUTIONS[0]), ("capture_format", CAPTURE_FORMAT_DEFAULT)]
+    assert selected == [("capture_resolution", CAPTURE_RESOLUTIONS[0]), ("capture_format", CAPTURE_FORMAT_DEFAULT),
+                        ("preset", "")]
 
 
 def test_resolution_label():
@@ -144,3 +145,4 @@ def test_setting_change_wakes_loop(state, attr, value):
     t0 = time.monotonic()
     state.wait(2)
     assert time.monotonic() - t0 < 1
+

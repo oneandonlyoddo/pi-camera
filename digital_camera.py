@@ -24,10 +24,12 @@ from settings import (
     RAW_EXTENSION,
     SETTINGS_FILE,
     TOUCHSCREEN_ENABLED,
+    TUNING_FILE,
 )
 from hud import HUD
 import exif
 import menu
+import presets
 
 # Optional: Import touchscreen support
 try:
@@ -38,14 +40,20 @@ except ImportError:
     print("Note: evdev not available - touchscreen support disabled")
 
 
-def controls_for(gain, colour_temp):
-    """Picamera2 controls for the web settings. 0 means auto for both."""
+def controls_for(gain, colour_temp, preset="", tuning=None):
+    """Picamera2 controls for the web settings and the preset's runtime part. 0 means auto for gain and WB.
+
+    A preset's fixed WB ("wb", Kelvin, as gains from the base `tuning`) applies only while the web WB is auto.
+    """
+    values = presets.PRESETS.get(preset, {})
     controls = {"AeEnable": True} if gain == 0 else {"AeEnable": False, "AnalogueGain": float(gain)}
-    if colour_temp == 0:
-        controls["AwbEnable"] = True
-    else:
+    if colour_temp != 0:
         controls.update(AwbEnable=False, ColourTemperature=int(colour_temp))
-    return controls
+    elif "wb" in values and tuning:
+        controls.update(AwbEnable=False, ColourGains=presets.colour_gains(tuning, values))
+    else:
+        controls["AwbEnable"] = True
+    return controls | presets.controls(values)
 
 
 # Buffers to fetch per capture format (CAPTURE_FORMATS). ["main", "raw"] is the order tested on the
@@ -82,7 +90,9 @@ class DigitalCamera:
         self.camera = None
         self.running = False
         self.hud = HUD(PREVIEW_WIDTH, PREVIEW_HEIGHT)
-        self._last_settings = None  # (gain, colour_temp) last sent to the camera
+        self._last_settings = None  # (gain, colour_temp, preset) last sent to the camera
+        self._preset = camera_state.preset  # preset whose tuning the open camera uses
+        self._base_tuning = Picamera2.load_tuning_file(TUNING_FILE)  # read once; presets modify copies
         self._last_saved = None  # CameraState.snapshot() last written to SETTINGS_FILE
 
         self.button = shutter_button(self.request_capture) if GPIO_CONNECTED else None
@@ -101,8 +111,10 @@ class DigitalCamera:
         print(f"Photos will be saved to: {self.photos_dir}")
 
     def setup_camera(self):
-        """Initialize and configure the camera with optimal settings."""
-        self.camera = Picamera2()
+        """Open and configure the camera with the tuning for self._preset, start the preview."""
+        preset = presets.PRESETS.get(self._preset)
+        # Tone curve + WB shift live in the tuning file, which libcamera reads only when the camera opens
+        self.camera = Picamera2(tuning=presets.tuning(self._base_tuning, preset) if preset else None)
 
         # Start the camera with fullscreen preview
         self.camera.start_preview(
@@ -139,7 +151,8 @@ class DigitalCamera:
         size = self.camera_state.capture_resolution
         streams = CAPTURE_STREAMS[self.camera_state.capture_format]
         manual_gain = self.camera_state.analogue_gain != 0
-        manual_wb = self.camera_state.colour_temperature != 0
+        manual_wb = not controls_for(0, self.camera_state.colour_temperature, self.camera_state.preset,
+                                     self._base_tuning)["AwbEnable"]
         shot_time = datetime.datetime.now().astimezone()  # one time for filename and EXIF
         timestamp = shot_time.strftime(FILENAME_TIMESTAMP_FORMAT)
         jpg_path = self.photos_dir / f"{FILENAME_PREFIX}_{timestamp}{JPG_EXTENSION}"
@@ -208,11 +221,20 @@ class DigitalCamera:
                     self.capture_photo()
                     self.camera_state.consume_shutter_request()  # drop taps made during the capture
 
-                settings_now = (self.camera_state.analogue_gain, self.camera_state.colour_temperature)
+                if self.camera_state.preset != self._preset:
+                    # Blocks ~seconds (R6 exception, like a capture); saved below only once the reopen worked
+                    self._preset = self.camera_state.preset
+                    print(f"Preset {self._preset or 'none'}: reopening the camera with its tuning")
+                    self._close_camera()
+                    self.setup_camera()
+                    self._last_settings = None  # a fresh camera needs every control again
+
+                settings_now = (self.camera_state.analogue_gain, self.camera_state.colour_temperature,
+                                self.camera_state.preset)
                 if settings_now != self._last_settings:
                     try:
-                        self.camera.set_controls(controls_for(*settings_now))
-                        print(f"Applied gain/colour temperature: {settings_now} (0 = auto)")
+                        self.camera.set_controls(controls_for(*settings_now, self._base_tuning))
+                        print(f"Applied gain/colour temperature/preset: {settings_now} (0 = auto)")
                     except Exception as e:
                         print(f"Warning: Failed to apply camera controls: {e}")
                     self._last_settings = settings_now
@@ -236,6 +258,13 @@ class DigitalCamera:
             print(f"Error: {e}")
             self.cleanup()
 
+    def _close_camera(self):
+        if self.camera:
+            self.camera.stop_preview()
+            self.camera.stop()
+            self.camera.close()
+            self.camera = None
+
     def cleanup(self):
         """Clean up resources on exit."""
         self.running = False
@@ -244,11 +273,7 @@ class DigitalCamera:
         if self.touchscreen:
             self.touchscreen.cleanup()
 
-        # Stop camera
-        if self.camera:
-            self.camera.stop_preview()
-            self.camera.stop()
-            self.camera.close()
+        self._close_camera()
 
         if self.button:
             self.button.close()

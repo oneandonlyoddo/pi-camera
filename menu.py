@@ -3,15 +3,17 @@
 Coordinates are HUD pixels as the user sees the screen (PREVIEW_WIDTH x PREVIEW_HEIGHT,
 before the PREVIEW_ROTATE flip). hud.py draws from the same layout, so what you see is what you hit.
 """
+import presets
 from settings import CAPTURE_FORMATS, CAPTURE_RESOLUTIONS, PREVIEW_HEIGHT, PREVIEW_WIDTH
 
 MENU_BUTTON = (684, 434, 794, 474)  # drawn bottom right, centred in the bottom bar (HUD_BAR_HEIGHT)
 MENU_HIT = (620, 380, 800, 480)  # larger than drawn: a finger on a 3.5" resistive screen
 PANEL = (0, 0, PREVIEW_WIDTH, PREVIEW_HEIGHT)  # full screen: solid colours, no preview slivers beside the bars
-ROW_RESOLUTION_Y = 100  # top of the option buttons; the label sits above
-ROW_FORMAT_Y = 240
-ROW_HEIGHT = 90
-DONE_BUTTON = (600, 364, 784, 448)  # right edge aligned with the option rows
+ROW_RESOLUTION_Y = 76  # top of the option buttons; the label sits above
+ROW_FORMAT_Y = 182
+ROW_PRESET_Y = 288
+ROW_HEIGHT = 72
+DONE_BUTTON = (600, 384, 784, 460)  # right edge aligned with the option rows
 
 
 def resolution_label(size):
@@ -36,6 +38,8 @@ def buttons(state):
         _row(ROW_RESOLUTION_Y, "capture_resolution", CAPTURE_RESOLUTIONS,
              [f"{resolution_label(r)} {r[0]}x{r[1]}" for r in CAPTURE_RESOLUTIONS], state.capture_resolution)
         + _row(ROW_FORMAT_Y, "capture_format", CAPTURE_FORMATS, CAPTURE_FORMATS, state.capture_format)
+        # shortcut: one row of buttons; past ~4 presets the labels stop fitting, page the row then
+        + _row(ROW_PRESET_Y, "preset", ("", *presets.PRESETS), ("NONE", *presets.PRESETS), state.preset)
         + [(DONE_BUTTON, "DONE", True, ("menu_open", False))]
     )
 

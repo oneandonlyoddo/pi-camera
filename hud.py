@@ -55,7 +55,7 @@ class HUD:
 
     def update(self, camera, state):
         """
-        Update the HUD overlay: grid, time and date, capture resolution and format (top),
+        Update the HUD overlay: grid, capture resolution and format, preset, time and date (top),
         exposure, gain and white balance (bottom left), the MENU button (bottom right),
         and the touch menu when it is open.
 
@@ -88,6 +88,8 @@ class HUD:
         draw.text((HUD_PADDING_W, top_y), capture_str, font=font, fill=HUD_COLOR_LIGHT, anchor="lm")
         time_str = datetime.datetime.now().strftime(HUD_TIME_FORMAT)
         draw.text((width - HUD_PADDING_W, top_y), time_str, font=font, fill=HUD_COLOR_LIGHT, anchor="rm")
+        if state.preset:  # none: the centre stays empty
+            draw.text((width / 2, top_y), state.preset, font=font, fill=HUD_COLOR_LIGHT, anchor="mm")
 
         # Bottom bar: data fields left, MENU right
         bottom_y = height - HUD_BAR_HEIGHT / 2
@@ -111,6 +113,7 @@ class HUD:
         draw.text((x, menu.PANEL[1] + 12), "SETTINGS", font=self.font, fill=HUD_COLOR_LIGHT)
         draw.text((x, menu.ROW_RESOLUTION_Y - 34), "RESOLUTION", font=self.font, fill=HUD_COLOR_GREY)
         draw.text((x, menu.ROW_FORMAT_Y - 34), "FORMAT", font=self.font, fill=HUD_COLOR_GREY)
+        draw.text((x, menu.ROW_PRESET_Y - 34), "PRESET", font=self.font, fill=HUD_COLOR_GREY)
         for rect, label, selected, _action in menu.buttons(state):
             if selected:
                 self._button(draw, rect, label, HUD_COLOR_ACCENT, HUD_COLOR_DARK)

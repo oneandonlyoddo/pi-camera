@@ -2,6 +2,8 @@
 import json
 import os
 import threading
+
+import presets
 from settings import (
     CAPTURE_FORMAT_DEFAULT,
     CAPTURE_FORMATS,
@@ -12,7 +14,7 @@ from settings import (
     GAIN_MIN,
 )
 
-PERSISTED = ("analogue_gain", "colour_temperature", "capture_resolution", "capture_format")
+PERSISTED = ("analogue_gain", "colour_temperature", "capture_resolution", "capture_format", "preset")
 
 
 def _locked(name):
@@ -35,6 +37,8 @@ def is_valid(key, value):
         return value in CAPTURE_RESOLUTIONS
     if key == "capture_format":
         return value in CAPTURE_FORMATS
+    if key == "preset":
+        return value == "" or value in presets.PRESETS  # "" = none
     low, high = {"analogue_gain": (GAIN_MIN, GAIN_MAX), "colour_temperature": (COLOUR_TEMP_MIN, COLOUR_TEMP_MAX)}[key]
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return False
@@ -50,6 +54,7 @@ class CameraState:
     capture_resolution = _locked("_capture_resolution")
     capture_format = _locked("_capture_format")
     menu_open = _locked("_menu_open")
+    preset = _locked("_preset")  # name in presets.PRESETS, "" = none
 
     def __init__(self):
         self._lock = threading.Lock()
@@ -60,6 +65,7 @@ class CameraState:
         self._capture_resolution = CAPTURE_RESOLUTIONS[0]
         self._capture_format = CAPTURE_FORMAT_DEFAULT
         self._menu_open = False
+        self._preset = ""
 
     @property
     def shutter_requested(self):

@@ -23,8 +23,9 @@ Reference images in this folder:
 - whitebalance
 - capture resolution
 - capture format e.g. Jpeg + RAW
+- preset name (top bar, centre; empty when none)
 
 
 ## Open questions
 - how to get battery status?
-- ~~neat way to access a settings menu~~: MENU button bottom right opens a full-screen touch menu (`menu.py`); resolution + format so far, filters etc. not yet
+- ~~neat way to access a settings menu~~: MENU button bottom right opens a full-screen touch menu (`menu.py`); resolution, format and preset

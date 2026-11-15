@@ -85,20 +85,14 @@ HUD_FONT_SIZE = 24
 HUD_TIME_FORMAT = "%H:%M - %d/%m/%Y"  # Time format (HH:MM | DD/MM/YYYY)
 
 # HUD positioning
-HUD_PADDING_W = 6  # Padding from screen edges in pixels
-HUD_PADDING_H = 6
+HUD_PADDING_W = 6  # Padding from the left/right screen edges in pixels (text is centred in the bars vertically)
 
-# HUD colors (RGBA format: Red, Green, Blue, Alpha
-HUD_COLOR_WHITE = (255, 255, 255, 255)  # White text for time
-HUD_COLOR_BLACK = (0, 0, 0, 255)  # Black text for settings
-# Touch menu, from docs/design/colour_scheme.jpg
-HUD_COLOR_ACCENT = (255, 77, 0, 255)  # FF4D00: MENU button, selected option
-HUD_COLOR_PANEL = (17, 17, 17, 235)  # 111111: menu background
-HUD_COLOR_MUTED = (142, 142, 142, 255)  # 8E8E8E: labels
-HUD_COLOR_BUTTON = (50, 50, 50, 255)  # unselected option
-HUD_COLOR_TEXT = (242, 242, 242, 255)  # F2F2F2
+# HUD colours: only the four from docs/design/colour_scheme.jpg, solid (no transparency; docs/design/hud.md)
+HUD_COLOR_ACCENT = (0xFF, 0x4D, 0x00)  # FF4D00: MENU button, selected option
+HUD_COLOR_DARK = (0x11, 0x11, 0x11)  # 111111: top/bottom bars, menu background, text on accent
+HUD_COLOR_LIGHT = (0xF2, 0xF2, 0xF2)  # F2F2F2: data fields, grid, menu text
+HUD_COLOR_GREY = (0x8E, 0x8E, 0x8E)  # 8E8E8E: menu labels, unselected outline
 
-# HUD Background Image
-# Path to a transparent PNG to use as the HUD background (optional)
-# Set to None to use the default generated background
-HUD_BACKGROUND_IMAGE_PATH = PROJECT_ROOT / "assets" / "hud_grid.png"
+# HUD layout
+HUD_GRID_WIDTH = 2  # rule-of-thirds lines, px in the 800x480 HUD; the panel shows it at 0.6x
+HUD_BAR_HEIGHT = 52  # top and bottom bars behind the data fields; the bottom one holds the MENU button

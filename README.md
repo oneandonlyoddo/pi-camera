@@ -17,7 +17,7 @@ The web server and the camera loop communicate through a lock-protected `CameraS
 ### Camera
 - 📸 **Hardware shutter button** via GPIO (enable with `GPIO_CONNECTED = True`)
 - 👆 **Touchscreen trigger**: touch anywhere outside the MENU button to capture (optional, Pi only)
-- 📋 **Touch menu**: MENU button (top left) to choose capture resolution and format
+- 📋 **Touch menu**: MENU button (bottom right) to choose capture resolution and format
 - 🖥️ **Fullscreen preview** on the connected display (DRM preview, 800x480)
 - 📷 **Capture resolution**: 4056x3040 (12 MP) or 2028x1520 (3 MP), both the full field of view
 - 🎞️ **Capture format**: JPG, RAW (DNG) or JPG + RAW (same frame)
@@ -100,12 +100,12 @@ To start the camera automatically at boot, install it as a systemd service (see 
 
 ### Touch menu
 
-Tap **MENU** (top left) to open the settings menu. Tap an option to select it (orange = selected), then **DONE** to close. While the menu is open, touches never fire the shutter.
+Tap **MENU** (bottom right) to open the settings menu. Tap an option to select it (orange = selected), then **DONE** to close. While the menu is open, touches never fire the shutter.
 
 - **Resolution:** 12MP 4056x3040 (default) or 3MP 2028x1520
 - **Format:** JPG, RAW (DNG only) or JPG+RAW (default)
 
-The current resolution and format are shown next to the MENU button. DNG-only shots are not listed in the web gallery.
+The current resolution and format are shown top left. DNG-only shots are not listed in the web gallery.
 
 ### Using the web interface
 
@@ -213,12 +213,16 @@ The web API rejects values outside these ranges, and the web sliders use them.
 HUD_FONT_PATH = PROJECT_ROOT / "assets" / "fonts" / "JetBrainsMono-Medium.ttf"
 HUD_FONT_SIZE = 24
 HUD_TIME_FORMAT = "%H:%M - %d/%m/%Y"
-HUD_PADDING_W = 6
-HUD_PADDING_H = 6
-HUD_COLOR_WHITE = (255, 255, 255, 255)   # Time/date text (RGBA)
-HUD_COLOR_BLACK = (0, 0, 0, 255)         # Exposure/gain/WB text (RGBA)
-HUD_BACKGROUND_IMAGE_PATH = PROJECT_ROOT / "assets" / "hud_grid.png"  # None = transparent background
+HUD_PADDING_W = 6                        # Left/right text padding
+HUD_COLOR_ACCENT = (0xFF, 0x4D, 0x00)    # MENU button, selected option
+HUD_COLOR_DARK = (0x11, 0x11, 0x11)      # Top/bottom bars, menu background, text on accent
+HUD_COLOR_LIGHT = (0xF2, 0xF2, 0xF2)     # Data fields, grid, menu text
+HUD_COLOR_GREY = (0x8E, 0x8E, 0x8E)      # Menu labels, unselected outline
+HUD_GRID_WIDTH = 2                       # Rule-of-thirds grid, drawn in code
+HUD_BAR_HEIGHT = 52                      # Top and bottom bars
 ```
+
+The HUD uses only the four colours of `docs/design/colour_scheme.jpg`, solid (no transparency). Layout: a dark bar at the top (resolution + format left, time right) and at the bottom (exposure/gain/WB left, MENU right); the grid runs behind the bars.
 
 ## Development Workflow
 
@@ -384,9 +388,7 @@ pi-camera/
 │   └── templates/
 │       └── index.html   # Gallery and settings UI
 ├── assets/
-│   ├── fonts/           # HUD font (JetBrains Mono, OFL)
-│   ├── hud_grid.png     # HUD background
-│   └── hud_grid.psd     # HUD background source
+│   └── fonts/           # HUD font (JetBrains Mono, OFL)
 ├── scripts/
 │   └── dev.sh           # Desktop → Pi deploy, run and log commands
 ├── deploy/

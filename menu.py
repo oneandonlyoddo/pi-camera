@@ -3,15 +3,15 @@
 Coordinates are HUD pixels as the user sees the screen (PREVIEW_WIDTH x PREVIEW_HEIGHT,
 before the PREVIEW_ROTATE flip). hud.py draws from the same layout, so what you see is what you hit.
 """
-from settings import CAPTURE_FORMATS, CAPTURE_RESOLUTIONS
+from settings import CAPTURE_FORMATS, CAPTURE_RESOLUTIONS, PREVIEW_HEIGHT, PREVIEW_WIDTH
 
-MENU_BUTTON = (6, 6, 116, 46)  # drawn top left
-MENU_HIT = (0, 0, 180, 100)  # larger than drawn: a finger on a 3.5" resistive screen
-PANEL = (16, 16, 784, 464)
+MENU_BUTTON = (684, 434, 794, 474)  # drawn bottom right, centred in the bottom bar (HUD_BAR_HEIGHT)
+MENU_HIT = (620, 380, 800, 480)  # larger than drawn: a finger on a 3.5" resistive screen
+PANEL = (0, 0, PREVIEW_WIDTH, PREVIEW_HEIGHT)  # full screen: solid colours, no preview slivers beside the bars
 ROW_RESOLUTION_Y = 100  # top of the option buttons; the label sits above
 ROW_FORMAT_Y = 240
 ROW_HEIGHT = 90
-DONE_BUTTON = (584, 364, 768, 448)
+DONE_BUTTON = (600, 364, 784, 448)  # right edge aligned with the option rows
 
 
 def resolution_label(size):

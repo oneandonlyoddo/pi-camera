@@ -14,6 +14,7 @@ Status: `done` · `wip` · `planned` · `idea` · `rejected`. A rejected feature
 | On-screen touch menu: capture resolution + format | wip | MENU button bottom right; 12MP/3MP, JPG / RAW / JPG+RAW. Capture verified on device; touch calibrated (2026-11-15). HUD redesign: look still needs a person. DNG-only shots don't show in the web gallery (accepted) |
 | Runtime settings survive restart | done | gain, WB, resolution, format in `camera_settings.json` |
 | Web gallery refresh button | done | round button next to the headline reloads the photo list (no-store fetch for the iOS home-screen app). Tap still needs a person |
+| EXIF in JPG + DNG | done | only values measured at capture or reported by the sensor; no aperture/lens (manual lens, unknown). Artist/Copyright from `settings.py`. Time zone, exposure/WB mode, pixel size: JPG only (pidng lacks the tags) |
 | <!-- next feature --> | | |
 
 ## Rejected

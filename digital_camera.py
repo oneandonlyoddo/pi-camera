@@ -3,6 +3,8 @@ import time
 import datetime
 from pathlib import Path
 from picamera2 import Picamera2, Preview
+from pidng.camdefs import Picamera2Camera
+from pidng.core import PICAM2DNG
 import libcamera
 from gpiozero import Button
 from settings import (
@@ -24,6 +26,7 @@ from settings import (
     TOUCHSCREEN_ENABLED,
 )
 from hud import HUD
+import exif
 import menu
 
 # Optional: Import touchscreen support
@@ -126,7 +129,10 @@ class DigitalCamera:
         """Capture one exposure and save it in the chosen resolution and format (JPG and DNG from the same frame)."""
         size = self.camera_state.capture_resolution
         streams = CAPTURE_STREAMS[self.camera_state.capture_format]
-        timestamp = datetime.datetime.now().strftime(FILENAME_TIMESTAMP_FORMAT)
+        manual_gain = self.camera_state.analogue_gain != 0
+        manual_wb = self.camera_state.colour_temperature != 0
+        shot_time = datetime.datetime.now().astimezone()  # one time for filename and EXIF
+        timestamp = shot_time.strftime(FILENAME_TIMESTAMP_FORMAT)
         jpg_path = self.photos_dir / f"{FILENAME_PREFIX}_{timestamp}{JPG_EXTENSION}"
         raw_path = jpg_path.with_suffix(RAW_EXTENSION)
         # No transform: saved photos are upright, PREVIEW_ROTATE is for the display only (R8).
@@ -142,17 +148,37 @@ class DigitalCamera:
             buffers, metadata = self.camera.switch_mode_and_capture_buffers(still_config, streams)
             buffers = dict(zip(streams, buffers, strict=True))
             helpers = self.camera.helpers
+            model = self.camera.camera_properties.get("Model", "unknown")  # sensor, e.g. "imx477"
             saved = []
             if "raw" in buffers:
                 # popped, so its ~18 MB is freed before the JPEG encode needs memory
-                helpers.save_dng(buffers.pop("raw"), metadata, still_config["raw"], str(raw_path))
+                self._save_dng(buffers.pop("raw"), metadata, still_config["raw"], raw_path, model,
+                               exif.dng_tags(metadata, shot_time, manual_gain))
                 saved.append(raw_path.name)
             if "main" in buffers:
-                helpers.save(helpers.make_image(buffers.pop("main"), still_config["main"]), metadata, str(jpg_path))
+                tags = exif.jpeg_exif(metadata, shot_time, model, size, manual_gain, manual_wb)
+                helpers.save(helpers.make_image(buffers.pop("main"), still_config["main"]), metadata, str(jpg_path),
+                             exif_data=tags)
                 saved.insert(0, jpg_path.name)
             print(f"✓ Photo saved: {' + '.join(saved)} ({size[0]}x{size[1]})")
         except Exception as e:
             print(f"✗ Error capturing photo: {e}")
+
+    def _save_dng(self, buffer, metadata, config, path, model, tags):
+        """helpers.save_dng() plus our EXIF tags, which it can't take.
+
+        Same steps as picamera2 0.3.39's version, minus PISP_COMP1 decompression (Pi 5 only).
+        Opened with "xb": never overwrites an existing file (R11).
+        """
+        # shortcut: private picamera2 helper (reshapes the raw buffer, no copy); recheck on a picamera2 upgrade
+        raw = self.camera.helpers._make_array_shared(buffer, config)
+        camera = Picamera2Camera(dict(config), metadata, model)  # copy: pidng writes into the config dict
+        for tag, value in tags:
+            camera.tags.set(tag, value)
+        dng = PICAM2DNG(camera)
+        dng.options(compress=0)
+        with open(path, "xb") as file:
+            dng.convert(raw, file=file)
 
     def run(self):
         """Start the camera and enter main loop."""

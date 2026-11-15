@@ -24,6 +24,7 @@ The web server and the camera loop communicate through a lock-protected `CameraS
 - 💾 **Settings survive a restart**: gain, white balance, resolution and format are saved to `camera_settings.json`
 - 🖼️ **Thumbnails** generated on first view in the gallery (`DCIM/thumbs/`)
 - 🕒 **Timestamped filenames**
+- 🏷️ **EXIF in JPG and DNG**: capture time, exposure, ISO, exposure/white-balance mode, sensor model, optional artist/copyright
 - 📊 **HUD overlay** with time, date, exposure, gain, white balance, capture resolution and format
 
 ### Web interface
@@ -96,6 +97,22 @@ To start the camera automatically at boot, install it as a systemd service (see 
    - `DCIM/IMG_YYYYMMDD_HHMMSS_ffffff.jpg`: JPEG image (formats JPG and JPG+RAW)
    - `DCIM/IMG_YYYYMMDD_HHMMSS_ffffff.dng`: RAW DNG file (formats RAW and JPG+RAW)
 
+   Both carry EXIF with only what the camera measures at capture or the sensor reports:
+
+   | Tag | JPG | DNG |
+   |---|---|---|
+   | Make (`Raspberry Pi`), Model (sensor, `imx477`), Orientation | ✓ | ✓ |
+   | DateTime / DateTimeOriginal, SubSecTimeOriginal (same time as the filename) | ✓ | ✓ |
+   | OffsetTimeOriginal (Pi time zone) | ✓ | – |
+   | ExposureTime (exact, µs) | ✓ | ✓ |
+   | ISO (= total gain × 100, picamera2's convention, not a calibrated ISO) | ✓ | ✓ |
+   | ExposureProgram (auto / manual gain) | ✓ | ✓ |
+   | ExposureMode, WhiteBalance (auto / manual), PixelX/YDimension, ColorSpace (sRGB) | ✓ | – |
+   | Artist, Copyright (if set in `settings.py`) | ✓ | ✓ |
+   | Software | `pi-camera` | `PiDNG` |
+
+   No aperture or lens tags: the manual lens can't report its aperture. "–": pidng has no such tag. The DNG also keeps pidng's colour data (CFA pattern, black/white level, colour matrix, as-shot neutral).
+
    The preview returns about 2 s after the trigger; the files are written a few seconds later (12 MP JPG+RAW: 5–9 s; 3 MP: about 2 s). Shutter presses during a capture are ignored. The gallery creates a 300x225 thumbnail in `DCIM/thumbs/` the first time it shows a photo.
 
 ### Touch menu
@@ -166,6 +183,8 @@ FILENAME_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S_%f"   # microseconds: two shots never
 JPG_EXTENSION = ".jpg"
 RAW_EXTENSION = ".dng"
 SETTINGS_FILE = PROJECT_ROOT / "camera_settings.json"   # saved runtime settings
+EXIF_ARTIST = ""                  # Artist tag in every photo; empty = not written
+EXIF_COPYRIGHT = ""               # e.g. "(c) 2026 Your Name"; ASCII only, other characters become "?"
 ```
 
 ### Thumbnails
@@ -380,6 +399,7 @@ pi-camera/
 ├── shared_state.py      # Thread-safe state shared between web server and camera
 ├── hud.py               # HUD overlay (PIL)
 ├── menu.py              # Touch menu layout and tap handling
+├── exif.py              # EXIF tags for JPG (piexif) and DNG (pidng)
 ├── settings.py          # Static configuration
 ├── web/
 │   ├── app.py           # Flask app and API routes

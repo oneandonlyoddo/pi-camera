@@ -10,7 +10,7 @@
 
 <body>
     <header>
-        <h1>Gallery</h1>
+        <h1 id="title">Gallery</h1>
         <span id="photo-count" class="pill"></span>
     </header>
 
@@ -76,7 +76,12 @@
     </nav>
 
     <div id="modal" class="modal" onclick="closeModal()">
-        <span class="close">&times;</span>
+        <span class="close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+            </svg>
+        </span>
         <img class="modal-content" id="modal-img">
         <span class="modal-caption" id="modal-caption"></span>
     </div>
@@ -98,6 +103,10 @@
             // Update nav state
             const btnIndex = viewName === 'gallery' ? 0 : 1;
             document.querySelectorAll('.nav-btn')[btnIndex].classList.add('active');
+
+            // Header follows the tab; the photo count belongs to the gallery only
+            document.getElementById('title').innerText = viewName === 'gallery' ? 'Gallery' : 'Settings';
+            document.getElementById('photo-count').hidden = viewName !== 'gallery';
         }
 
         function setupControls() {

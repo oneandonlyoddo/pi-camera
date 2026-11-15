@@ -146,9 +146,7 @@ The current resolution and format are shown top left. DNG-only shots are not lis
 
 4. **Settings tab**
    - **Shutter button**: capture remotely
-   - **Analogue gain**: 0 = auto, up to 16x (step 0.1)
-   - **Colour temperature**: 0 = auto, up to 8000 K (step 100)
-   - **White balance presets**: buttons under the slider (AUTO, INDOOR, FLUOR, SUNNY, CLOUDY, SHADE) set it to a fixed Kelvin value
+   - Every touch-menu setting, in the same order, one block per setting: **Resolution**, **Format**, **Preset** (option buttons), **White Balance** (slider 0 = auto up to 8000 K, step 100, plus the WB preset buttons), **Gain** (slider 0 = auto up to 16x, step 0.1, plus the gain step buttons). Orange = current value
 
 Gain, colour temperature, resolution, format and preset are saved to `camera_settings.json` in the project folder whenever they change, and restored at startup. Delete the file to go back to the defaults (auto, 12MP, JPG+RAW, no preset). Invalid values in it are ignored with a warning in the log. `scripts/dev.sh` never copies or cleans this file.
 
@@ -160,7 +158,7 @@ Press `Ctrl+C`. When running as a service: `sudo systemctl stop pi-camera`.
 
 ## Presets
 
-Presets are Fuji-style film simulation recipes, defined in `presets.json` (project root) and picked in the touch menu (PRESET row; NONE = off). The active preset's name shows in the top centre of the HUD. They change the live preview and the JPG; the DNG stays untouched.
+Presets are Fuji-style film simulation recipes, defined in `presets.json` (project root) and picked in the touch menu or the web Settings tab (PRESET; NONE = off). The active preset's name shows in the top centre of the HUD. They change the live preview and the JPG; the DNG stays untouched.
 
 ```json
 {"Portra": {"color": 2, "highlight": -1, "shadow": -1, "sharpness": -2, "wb_red": 2, "wb_blue": -4}}
@@ -392,23 +390,23 @@ Requests a capture. The camera starts it immediately; requests made while a capt
 Returns the current runtime settings.
 
 ```json
-{"gain": 0.0, "color_temp": 0}
+{"gain": 0.0, "color_temp": 0, "resolution": [4056, 3040], "format": "JPG+RAW", "preset": ""}
 ```
 
 ### POST /api/settings
-Updates `gain` and/or `color_temp`. Both fields are optional. Each must be `0` (automatic) or within its range in `settings.py`: gain `1.0`–`16.0`, colour temperature `2000`–`8000` K.
+Updates any of the fields; all are optional. `gain` and `color_temp` must be `0` (automatic) or within their range in `settings.py`: gain `1.0`–`16.0`, colour temperature `2000`–`8000` K. `resolution` must be one of `CAPTURE_RESOLUTIONS` as `[width, height]`, `format` one of `CAPTURE_FORMATS`, `preset` a name in `presets.json` or `""` (none). A preset change reopens the camera (about 1.6 s).
 
 **Request:**
 ```json
-{"gain": 2.5, "color_temp": 5000}
+{"gain": 2.5, "format": "RAW"}
 ```
 
-**Response:**
+**Response:** every setting, as GET returns it
 ```json
-{"status": "ok", "gain": 2.5, "color_temp": 5000}
+{"status": "ok", "gain": 2.5, "color_temp": 0, "resolution": [4056, 3040], "format": "RAW", "preset": ""}
 ```
 
-- `400` with `{"status": "error", "message": "..."}` if the body is empty or any value is invalid (out of range, not a number, NaN, `true`/`false`). Nothing is changed then, not even a valid value in the same request.
+- `400` with `{"status": "error", "message": "..."}` if the body is empty or not a JSON object, or any value is invalid (out of range, not a number, NaN, `true`/`false`). Nothing is changed then, not even a valid value in the same request.
 
 `/api/trigger` and `/api/settings` return `500` if the app was started without camera state (for example `python web/app.py`).
 

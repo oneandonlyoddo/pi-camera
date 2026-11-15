@@ -72,9 +72,26 @@ def test_trigger_requests_shutter(client, state):
 # --- /api/settings -----------------------------------------------------------
 
 def test_settings_roundtrip(client):
+    from settings import CAPTURE_FORMAT_DEFAULT, CAPTURE_RESOLUTIONS
+
+    expected = {"gain": 2.5, "color_temp": 5000, "resolution": list(CAPTURE_RESOLUTIONS[0]),
+                "format": CAPTURE_FORMAT_DEFAULT, "preset": ""}
     res = client.post("/api/settings", json={"gain": 2.5, "color_temp": 5000})
-    assert res.get_json() == {"status": "ok", "gain": 2.5, "color_temp": 5000}
-    assert client.get("/api/settings").get_json() == {"gain": 2.5, "color_temp": 5000}
+    assert res.get_json() == {"status": "ok", **expected}
+    assert client.get("/api/settings").get_json() == expected
+
+
+def test_settings_sets_resolution_format_preset(client, state):
+    import presets
+    from settings import CAPTURE_RESOLUTIONS
+
+    small = CAPTURE_RESOLUTIONS[1]
+    name = next(iter(presets.PRESETS))
+    res = client.post("/api/settings", json={"resolution": list(small), "format": "RAW", "preset": name})
+    assert res.status_code == 200
+    assert (state.capture_resolution, state.capture_format, state.preset) == (small, "RAW", name)
+    client.post("/api/settings", json={"preset": ""})
+    assert state.preset == ""
 
 
 def test_settings_zero_means_auto(client, state):
@@ -104,20 +121,44 @@ def test_settings_empty_body_400(client):
         {"color_temp": 50000},
         {"color_temp": True},
         {"gain": 2.0, "color_temp": 50000},  # one bad value rejects the whole request
+        {"resolution": [640, 480]},
+        {"resolution": "4056x3040"},
+        {"resolution": 12},
+        {"resolution": [[4056], [3040]]},
+        {"format": "TIFF"},
+        {"format": ["RAW"]},
+        {"preset": "Deleted"},
+        {"preset": {"a": 1}},
+        {"preset": None},
+        {"gain": 2.0, "format": "TIFF"},
     ],
 )
 def test_settings_rejects_out_of_range(client, state, payload):
+    before = state.snapshot()
     res = client.post("/api/settings", json=payload)
     assert res.status_code == 400
-    assert state.analogue_gain == 0.0
-    assert state.colour_temperature == 0
+    assert state.snapshot() == before
 
 
-def test_wb_preset_buttons_render_and_are_valid(client):
-    from settings import WB_PRESETS
-    from shared_state import is_valid
+def test_settings_rejects_non_object_body(client):
+    assert client.post("/api/settings", json=[1, 2]).status_code == 400
 
-    html = client.get("/").get_data(as_text=True)
-    for name, kelvin in WB_PRESETS.items():
-        assert f'data-kelvin="{kelvin}">{name}<' in html
-        assert is_valid("colour_temperature", kelvin)
+
+def test_settings_page_renders_every_menu_option(client):
+    """Each touch-menu option is a chip on the web page, and its value passes the API."""
+    import html as html_lib
+    import json
+    import re
+
+    import menu
+
+    page = client.get("/").get_data(as_text=True)
+    chips = {(key, json.dumps(json.loads(html_lib.unescape(value))))  # normalised JSON: lists don't hash
+             for key, value in re.findall(r'data-key="(\w+)" data-value="([^"]*)"', page)}
+    api_key = {"capture_resolution": "resolution", "capture_format": "format", "preset": "preset",
+               "colour_temperature": "color_temp", "analogue_gain": "gain"}
+    for _t, attr, values in menu.categories():
+        for v in values:
+            key, value = api_key[attr], list(v) if isinstance(v, tuple) else v
+            assert (key, json.dumps(value)) in chips, (key, value)
+            assert client.post("/api/settings", json={key: value}).status_code == 200, (key, value)

@@ -14,4 +14,4 @@ For values the user changes while the camera runs (like gain and colour temperat
 8. **On device:** `/on-device` verify, including step 4 (set the value via curl, shoot, compare with auto, reset).
 9. **Docs:** README Configuration + API, `docs/FEATURES.md`.
 
-Settings are saved to `camera_settings.json`: add the new key to `PERSISTED` and `is_valid()` in `shared_state.py` (with a test in `tests/test_menu.py`). If it belongs in the touch menu, add a row in `menu.buttons()`.
+Settings are saved to `camera_settings.json`: add the new key to `PERSISTED` and `is_valid()` in `shared_state.py` (with a test in `tests/test_menu.py`). If it belongs in the touch menu, add an entry to `menu.categories()` (and a short label in `menu.value_label()`); the web page shows it as chips via `index()` in `web/app.py`, and `tests/test_web.py` checks every menu option is on the page.

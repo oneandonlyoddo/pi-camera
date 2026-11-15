@@ -41,25 +41,42 @@
                     <p class="shutter-label">Take Photo</p>
                 </div>
 
+                <!-- Same settings and order as the touch menu on the Pi (menu.categories) -->
+                {% for key, options in choices %}
                 <div class="control-group">
-                    <label for="gain-slider">Analogue Gain: <span id="gain-val">Auto</span></label>
-                    <input type="range" id="gain-slider" min="0" max="{{ gain_max }}" step="0.1" value="0">
-                    <div class="slider-labels">
-                        <span>Auto</span>
-                        <span>{{ gain_max|int }}x</span>
+                    <label>{{ key|capitalize }}</label>
+                    <div class="chips">
+                        {% for value, label in options %}
+                        <button class="chip" data-key="{{ key }}" data-value="{{ value|tojson|forceescape }}">{{ label }}</button>
+                        {% endfor %}
                     </div>
                 </div>
+                {% endfor %}
 
                 <div class="control-group">
-                    <label for="temp-slider">Color Temp: <span id="temp-val">Auto</span></label>
+                    <label for="temp-slider">White Balance <span id="temp-val">Auto</span></label>
                     <input type="range" id="temp-slider" min="0" max="{{ temp_max }}" step="100" value="0">
                     <div class="slider-labels">
                         <span>Auto</span>
                         <span>{{ temp_max }}K</span>
                     </div>
-                    <div class="wb-presets">
+                    <div class="chips">
                         {% for name, kelvin in wb_presets.items() %}
-                        <button class="wb-chip" data-kelvin="{{ kelvin }}">{{ name }}</button>
+                        <button class="chip" data-key="color_temp" data-value="{{ kelvin }}">{{ name }}</button>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label for="gain-slider">Gain <span id="gain-val">Auto</span></label>
+                    <input type="range" id="gain-slider" min="0" max="{{ gain_max }}" step="0.1" value="0">
+                    <div class="slider-labels">
+                        <span>Auto</span>
+                        <span>{{ gain_max|int }}x</span>
+                    </div>
+                    <div class="chips">
+                        {% for value, label in gain_steps %}
+                        <button class="chip" data-key="gain" data-value="{{ value }}">{{ label }}</button>
                         {% endfor %}
                     </div>
                 </div>
@@ -139,50 +156,44 @@
                     .catch(err => console.error(err));
             });
 
-            // Sliders
+            // Sliders: the label and chips follow while dragging, the value is sent on release
             gainSlider.addEventListener('input', (e) => {
-                const val = e.target.value;
-                document.getElementById('gain-val').innerText = val == 0 ? 'Auto' : val + 'x';
+                current.gain = Number(e.target.value);
+                showSettings(current);
             });
-
             gainSlider.addEventListener('change', (e) => {
-                updateSettings({ gain: snapToMin(e.target, {{ gain_min }}) });
+                updateSettings({ gain: Number(snapToMin(e.target, {{ gain_min }})) });
             });
-
             tempSlider.addEventListener('input', (e) => {
-                const val = e.target.value;
-                document.getElementById('temp-val').innerText = val == 0 ? 'Auto' : val + 'K';
-                markWbPreset(val);
+                current.color_temp = Number(e.target.value);
+                showSettings(current);
+            });
+            tempSlider.addEventListener('change', (e) => {
+                updateSettings({ color_temp: Number(snapToMin(e.target, {{ temp_min }})) });
             });
 
-            // WB presets: shortcuts that move the slider
-            document.querySelectorAll('.wb-chip').forEach(chip => chip.addEventListener('click', () => {
-                tempSlider.value = chip.dataset.kelvin;
-                tempSlider.dispatchEvent(new Event('input'));
-                updateSettings({ color_temp: tempSlider.value });
+            // Chips: one value each (WB and gain chips are shortcuts that move the slider)
+            document.querySelectorAll('.chip').forEach(chip => chip.addEventListener('click', () => {
+                updateSettings({ [chip.dataset.key]: JSON.parse(chip.dataset.value) });
             }));
 
-            tempSlider.addEventListener('change', (e) => {
-                updateSettings({ color_temp: snapToMin(e.target, {{ temp_min }}) });
-            });
-
-            // Load initial settings
-            fetch('/api/settings')
+            // Load initial settings; no-store so a value changed on the Pi shows
+            fetch('/api/settings', { cache: 'no-store' })
                 .then(res => res.json())
-                .then(data => {
-                    if (data.status !== 'error') {
-                        gainSlider.value = data.gain;
-                        document.getElementById('gain-val').innerText = data.gain == 0 ? 'Auto' : data.gain + 'x';
-
-                        tempSlider.value = data.color_temp;
-                        document.getElementById('temp-val').innerText = data.color_temp == 0 ? 'Auto' : data.color_temp + 'K';
-                        markWbPreset(data.color_temp);
-                    }
-                });
+                .then(data => { if (data.status !== 'error') showSettings(data); });
         }
 
-        function markWbPreset(kelvin) {
-            document.querySelectorAll('.wb-chip').forEach(chip => chip.classList.toggle('active', chip.dataset.kelvin == kelvin));
+        let current = {};
+
+        // Sliders, their labels and the active chips from one settings object (as /api/settings returns it)
+        function showSettings(s) {
+            current = s;
+            document.getElementById('gain-slider').value = s.gain;
+            document.getElementById('gain-val').innerText = s.gain == 0 ? 'Auto' : s.gain + 'x';
+            document.getElementById('temp-slider').value = s.color_temp;
+            document.getElementById('temp-val').innerText = s.color_temp == 0 ? 'Auto' : s.color_temp + 'K';
+            document.querySelectorAll('.chip').forEach(chip => chip.classList.toggle('active',
+                JSON.stringify(JSON.parse(chip.dataset.value)) === JSON.stringify(s[chip.dataset.key])));
         }
 
         // 0 = auto; the camera rejects values between 0 and its minimum, so jump to the minimum
@@ -201,7 +212,10 @@
                 body: JSON.stringify(data)
             })
                 .then(res => res.json())
-                .then(data => console.log('Settings updated:', data));
+                .then(data => {
+                    if (data.status === 'ok') showSettings(data);
+                    else console.error('Settings rejected:', data);
+                });
         }
 
         function loadPhotos() {

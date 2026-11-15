@@ -7,8 +7,14 @@ from PIL import Image
 
 # Add parent directory to path to allow importing settings
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import presets  # noqa: E402
+from menu import resolution_label, value_label  # noqa: E402
+from shared_state import is_valid  # noqa: E402
 from settings import (  # noqa: E402 (needs the sys.path line above)
+    CAPTURE_FORMATS,
+    CAPTURE_RESOLUTIONS,
     COLOUR_TEMP_MAX,
+    GAIN_STEPS,
     COLOUR_TEMP_MIN,
     WB_PRESETS,
     GAIN_MAX,
@@ -97,6 +103,13 @@ def index():
     return render_template(
         'index.html', gain_min=GAIN_MIN, gain_max=GAIN_MAX, temp_min=COLOUR_TEMP_MIN, temp_max=COLOUR_TEMP_MAX,
         wb_presets=WB_PRESETS,
+        # chip rows: (API key, [(value, label)]), labels as on the Pi menu
+        choices=[
+            ("resolution", [(list(r), f"{resolution_label(r)} {r[0]}x{r[1]}") for r in CAPTURE_RESOLUTIONS]),
+            ("format", [(f, f) for f in CAPTURE_FORMATS]),
+            ("preset", [(p, value_label("preset", p)) for p in ("", *presets.PRESETS)]),
+        ],
+        gain_steps=[(g, value_label("analogue_gain", g)) for g in GAIN_STEPS],
     )
 
 @app.route('/api/photos')
@@ -173,44 +186,59 @@ def parse_setting(data, key, low, high):
         raise ValueError(f"{key} must be 0 (auto) or between {low} and {high}")
     return value
 
+CHOICES = {"resolution": "capture_resolution", "format": "capture_format", "preset": "preset"}  # API key -> state
+
+
+def settings_json():
+    return {
+        "gain": camera_state.analogue_gain,
+        "color_temp": camera_state.colour_temperature,
+        "resolution": list(camera_state.capture_resolution),
+        "format": camera_state.capture_format,
+        "preset": camera_state.preset,
+    }
+
+
 @app.route('/api/settings', methods=['POST'])
 def update_settings():
-    """Update camera settings (gain, color temp)."""
+    """Update camera settings (gain, color temp, resolution, format, preset)."""
     if not camera_state:
         return jsonify({"status": "error", "message": "Camera state not initialized"}), 500
-        
-    data = request.json
-    if not data:
+
+    data = request.get_json(silent=True)
+    if not data or not isinstance(data, dict):
         return jsonify({"status": "error", "message": "No data provided"}), 400
-    
+
     try:
         gain = parse_setting(data, 'gain', GAIN_MIN, GAIN_MAX)
         temp = parse_setting(data, 'color_temp', COLOUR_TEMP_MIN, COLOUR_TEMP_MAX)
     except (TypeError, ValueError) as e:
         return jsonify({"status": "error", "message": str(e)}), 400
+    choices = {}
+    for key, attr in CHOICES.items():
+        if key in data:
+            value = tuple(data[key]) if isinstance(data[key], list) else data[key]  # JSON has no tuples
+            if not is_valid(attr, value):
+                return jsonify({"status": "error", "message": f"invalid {key}: {data[key]!r}"}), 400
+            choices[attr] = value
 
-    # Only store once both values are valid, so a bad request changes nothing
+    # Only store once every value is valid, so a bad request changes nothing
     if gain is not None:
         camera_state.analogue_gain = gain
     if temp is not None:
         camera_state.colour_temperature = int(temp)
+    for attr, value in choices.items():
+        setattr(camera_state, attr, value)
 
-    return jsonify({
-        "status": "ok", 
-        "gain": camera_state.analogue_gain,
-        "color_temp": camera_state.colour_temperature
-    })
-    
+    return jsonify({"status": "ok", **settings_json()})
+
+
 @app.route('/api/settings', methods=['GET'])
 def get_settings():
     """Get current camera settings."""
     if not camera_state:
         return jsonify({"status": "error"}), 500
-        
-    return jsonify({
-        "gain": camera_state.analogue_gain,
-        "color_temp": camera_state.colour_temperature
-    })
+    return jsonify(settings_json())
 
 if __name__ == '__main__':
     # Standalone run (no camera control)

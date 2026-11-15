@@ -376,15 +376,18 @@ input[type=range]::-moz-range-track {
     color: var(--grey);
 }
 
-/* WB presets: shortcuts under the colour temperature slider */
-.wb-presets {
+/* Chips: one option each; under a slider they are shortcuts */
+.chips {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+}
+
+input[type=range] ~ .chips {
     margin-top: 16px;
 }
 
-.wb-chip {
+.chip {
     font-family: var(--mono);
     font-size: 12px;
     font-weight: 700;
@@ -396,7 +399,7 @@ input[type=range]::-moz-range-track {
     cursor: pointer;
 }
 
-.wb-chip.active {
+.chip.active {
     background: var(--orange);
     border-color: var(--orange);
     color: var(--black);

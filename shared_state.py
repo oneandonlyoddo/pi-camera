@@ -38,7 +38,7 @@ def is_valid(key, value):
     if key == "capture_format":
         return value in CAPTURE_FORMATS
     if key == "preset":
-        return value == "" or value in presets.PRESETS  # "" = none
+        return isinstance(value, str) and (value == "" or value in presets.PRESETS)  # "" = none; str: dicts don't hash
     low, high = {"analogue_gain": (GAIN_MIN, GAIN_MAX), "colour_temperature": (COLOUR_TEMP_MIN, COLOUR_TEMP_MAX)}[key]
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return False

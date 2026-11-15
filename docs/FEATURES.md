@@ -4,13 +4,15 @@ Status: `done` · `wip` · `planned` · `idea` · `rejected`. A rejected feature
 
 | Feature | Status | Notes |
 |---|---|---|
-| JPG + DNG capture at 4056x3040 | done | |
+| JPG + DNG capture at 4056x3040 | done | now one choice in the touch menu |
 | Fullscreen DRM preview with HUD | done | |
 | Shutter: GPIO button | done | off by default (`GPIO_CONNECTED`) |
-| Shutter: touchscreen | done | any touch fires |
+| Shutter: touchscreen | done | any touch outside the MENU button fires |
 | Shutter: web button | done | |
 | Web gallery with thumbnails + lightbox | done | |
 | Gain / white balance from web | done | gain 1–16x, WB 2000–8000 K via libcamera `ColourTemperature`; 0 = auto |
+| On-screen touch menu: capture resolution + format | wip | MENU button top-left; 12MP/3MP, JPG / RAW / JPG+RAW. Capture verified on device; touch calibration and the menu's look still need a person. DNG-only shots don't show in the web gallery (accepted) |
+| Runtime settings survive restart | done | gain, WB, resolution, format in `camera_settings.json` |
 | <!-- next feature --> | | |
 
 ## Rejected

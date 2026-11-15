@@ -17,7 +17,7 @@ The web server and the camera loop communicate through a lock-protected `CameraS
 ### Camera
 - 📸 **Hardware shutter button** via GPIO (enable with `GPIO_CONNECTED = True`)
 - 👆 **Touchscreen trigger**: touch anywhere outside the MENU button to capture (optional, Pi only)
-- 📋 **Touch menu**: MENU button (bottom right) to choose capture resolution, format, preset and white balance (DONE top right)
+- 📋 **Touch menu**: MENU button (bottom right) opens a settings list (resolution, format, preset, white balance, gain); tap a setting for its options, drag to scroll
 - ☀️ **White balance presets**: AUTO, INDOOR 3000K, FLUOR 4000K, SUNNY 5500K, CLOUDY 6500K, SHADE 7500K (fixed Kelvin, `WB_PRESETS` in `settings.py`); in the touch menu and the web Settings tab
 - 🎨 **Presets / film simulation**: Fuji-style recipes from `presets.json`, applied to the live preview and the JPG (see [Presets](#presets))
 - 🖥️ **Fullscreen preview** on the connected display (DRM preview, 800x480)
@@ -119,10 +119,13 @@ To start the camera automatically at boot, install it as a systemd service (see 
 
 ### Touch menu
 
-Tap **MENU** (bottom right) to open the settings menu. Tap an option to select it (orange = selected), then **DONE** to close. While the menu is open, touches never fire the shutter.
+Tap **MENU** (bottom right) to open the settings list. Each row shows a setting and its current value (orange); tap it to open its options. Tap an option to select it (orange = selected) and return to the list, or **< BACK** to return without a change. **DONE** (top right of the list) closes the menu. Drag a list up or down to scroll it (a grey bar on the right shows a list is longer than the screen); a touch that moves less than 16 px counts as a tap. While the menu is open, touches never fire the shutter.
 
 - **Resolution:** 12MP 4056x3040 (default) or 3MP 2028x1520
 - **Format:** JPG, RAW (DNG only) or JPG+RAW (default)
+- **Preset:** NONE (default) or a recipe from `presets.json`
+- **White balance:** AUTO (default) or a WB preset; a web slider value shows as e.g. 4200K
+- **Gain:** AUTO (default), 1x, 2x, 4x, 8x, 16x (`GAIN_STEPS`); a web slider value shows as e.g. 3.2x
 
 The current resolution and format are shown top left. DNG-only shots are not listed in the web gallery.
 
@@ -192,6 +195,7 @@ TOUCHSCREEN_ENABLED = True        # Touchscreen shutter + menu (Pi only, require
 TOUCH_SWAP_XY = False             # Calibration: map touch axes onto the screen as seen
 TOUCH_INVERT_X = False
 TOUCH_INVERT_Y = False
+TOUCH_LIFT_GRACE = 0.15          # s; shorter lifts are contact lost mid-drag, not a release
 ```
 
 Every tap is logged as `Touch raw=(…) screen=(x, y)` with x, y from 0 to 1 (0, 0 = top left as you see the screen). To calibrate, follow the log (`scripts/dev.sh --logs`) and tap the corners: if x and y are swapped, set `TOUCH_SWAP_XY`; if one runs the wrong way, set its `TOUCH_INVERT_*`.
@@ -421,7 +425,7 @@ pi-camera/
 ├── touchscreen.py       # Touchscreen input via evdev (Pi only)
 ├── shared_state.py      # Thread-safe state shared between web server and camera
 ├── hud.py               # HUD overlay (PIL)
-├── menu.py              # Touch menu layout and tap handling
+├── menu.py              # Touch menu layout, tap and drag handling
 ├── exif.py              # EXIF tags for JPG (piexif) and DNG (pidng)
 ├── settings.py          # Static configuration
 ├── web/

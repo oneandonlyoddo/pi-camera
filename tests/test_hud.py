@@ -44,10 +44,12 @@ def test_grid_lines_at_thirds(render):
     assert img[y, x + 20, 3] == 0  # the preview shows between lines
 
 
-@pytest.mark.parametrize("menu_open", [False, True])
-def test_no_transparency(render, state, menu_open):
+@pytest.mark.parametrize("menu_open, page, scroll", [
+    (False, "", 0), (True, "", 0), (True, "colour_temperature", 0), (True, "colour_temperature", 30),
+])
+def test_no_transparency(render, state, menu_open, page, scroll):
     """docs/design/hud.md: solid colours only. Every pixel is fully transparent or fully opaque."""
-    state.menu_open = menu_open
+    state.menu_open, state.menu_page, state.menu_scroll = menu_open, page, scroll
     alpha = render()[..., 3]
     assert set(np.unique(alpha)) <= {0, 255}
 
@@ -77,8 +79,22 @@ def test_bottom_data_fields_light_on_dark_bar(render):
 def test_menu_open_renders(render, state):
     state.menu_open = True
     img = render()
-    rect = next(r for r, _l, sel, _a in menu.buttons(state) if sel)
+    rect = menu.DONE_BUTTON
     assert tuple(img[rect[1] + 20, rect[0] + 4, :3]) == HUD_COLOR_ACCENT
-    # MENU button (partly outside the panel) is hidden while the menu is open
+    # MENU button is hidden while the menu is open
     assert tuple(img[menu.MENU_BUTTON[3] - 2, menu.MENU_BUTTON[2] - 12, :3]) != HUD_COLOR_ACCENT
     assert np.any(img[..., 3] > 0)
+
+
+def test_option_page_marks_selected_row(render, state):
+    state.menu_open, state.menu_page = True, "capture_format"
+    img = render()
+    rect = next(r for r, _l, _v, sel, _a in menu.buttons(state) if sel)
+    assert tuple(img[rect[1] + 20, rect[0] + 4, :3]) == HUD_COLOR_ACCENT
+
+
+def test_header_is_solid_over_scrolled_rows(render, state):
+    state.menu_open, state.menu_page, state.menu_scroll = True, "colour_temperature", 30
+    img = render()
+    x = menu.ROW_LEFT + 4  # a row's left edge, if it were drawn under the header
+    assert {tuple(c) for c in img[menu.LIST_TOP - 6:menu.LIST_TOP, x, :3]} == {HUD_COLOR_DARK}

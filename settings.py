@@ -23,6 +23,7 @@ TOUCHSCREEN_ENABLED = True  # Enable touchscreen shutter + menu (requires evdev)
 TOUCH_SWAP_XY = False
 TOUCH_INVERT_X = True
 TOUCH_INVERT_Y = True
+TOUCH_LIFT_GRACE = 0.15  # s; a lift shorter than this is contact lost mid-drag, not a release (touchscreen.LiftFilter)
 
 # ============================================================================
 # FILE PATHS
@@ -78,6 +79,7 @@ COLOUR_TEMP_MAX = 8000
 # Named WB shortcuts for the colour temperature (touch menu, web, preset "wb"); fixed Kelvin like other cameras.
 # Names must fit a menu button, max ~7 characters (tests/test_menu.py checks). 0 = auto.
 WB_PRESETS = {"AUTO": 0, "INDOOR": 3000, "FLUOR": 4000, "SUNNY": 5500, "CLOUDY": 6500, "SHADE": 7500}
+GAIN_STEPS = (0.0, 1.0, 2.0, 4.0, 8.0, 16.0)  # touch menu + web chips; the web slider sets any value in range
 
 # ============================================================================
 # PRESETS (film simulation recipes; chosen in the touch menu, saved in SETTINGS_FILE)

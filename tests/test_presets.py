@@ -69,12 +69,12 @@ def test_tone_curve_stays_monotonic_with_fixed_ends(highlight, shadow):
 
 
 def test_menu_row_selects_preset(state, two_presets):
-    state.menu_open = True
-    rect = next(r for r, _l, _s, action in menu.buttons(state) if action == ("preset", "Portra"))
+    state.menu_open, state.menu_page = True, "preset"
+    labels = [label for _r, label, _v, _s, (attr, _x) in menu.buttons(state) if attr == "preset"]
+    assert labels == ["NONE", "Acros", "Portra"]
+    rect = next(r for r, _l, _v, _s, action in menu.buttons(state) if action == ("preset", "Portra"))
     menu.handle_tap(state, (rect[0] + rect[2]) / 2, (rect[1] + rect[3]) / 2)
     assert state.preset == "Portra" and state.menu_open is True
-    labels = [label for _r, label, _s, (attr, _v) in menu.buttons(state) if attr == "preset"]
-    assert labels == ["NONE", "Acros", "Portra"]
 
 
 def test_preset_persists_and_unknown_is_skipped(state, tmp_path, two_presets):

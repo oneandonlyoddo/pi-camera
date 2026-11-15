@@ -108,15 +108,33 @@ class HUD:
 
     def _draw_menu(self, draw, state):
         """The touch menu, from menu.buttons() (same rects as the hit test)."""
+        width, height = self.preview_size
         draw.rectangle(menu.PANEL, fill=HUD_COLOR_DARK)
-        x = menu.PANEL[0] + 16
-        draw.text((x, menu.PANEL[1] + 12), "SETTINGS", font=self.font, fill=HUD_COLOR_LIGHT)
-        draw.text((x, menu.ROW_RESOLUTION_Y - 34), "RESOLUTION", font=self.font, fill=HUD_COLOR_GREY)
-        draw.text((x, menu.ROW_FORMAT_Y - 34), "FORMAT", font=self.font, fill=HUD_COLOR_GREY)
-        draw.text((x, menu.ROW_PRESET_Y - 34), "PRESET", font=self.font, fill=HUD_COLOR_GREY)
-        draw.text((x, menu.ROW_WB_Y - 34), "WHITE BALANCE", font=self.font, fill=HUD_COLOR_GREY)
-        for rect, label, selected, _action in menu.buttons(state):
+        items = menu.buttons(state)
+        header = [b for b in items if b[0][3] < menu.LIST_TOP]
+        for rect, label, value, selected, _action in items[len(header):]:  # list rows, left-aligned
+            fill, text = (HUD_COLOR_ACCENT, HUD_COLOR_DARK) if selected else (HUD_COLOR_DARK, HUD_COLOR_LIGHT)
+            draw.rounded_rectangle(rect, radius=10, fill=fill, outline=None if selected else HUD_COLOR_GREY, width=2)
+            mid = (rect[1] + rect[3]) / 2
+            draw.text((rect[0] + 16, mid), label, font=self.font, fill=text, anchor="lm")
+            if value:
+                draw.text((rect[2] - 16, mid), value, font=self.font, fill=HUD_COLOR_ACCENT, anchor="rm")
+
+        # Header over rows scrolled beneath it
+        draw.rectangle((0, 0, width, menu.LIST_TOP - 1), fill=HUD_COLOR_DARK)
+        title_x = menu.BACK_BUTTON[2] + 16 if state.menu_page else menu.PANEL[0] + 16
+        draw.text((title_x, menu.LIST_TOP / 2 - 4), menu.title(state), font=self.font, fill=HUD_COLOR_LIGHT, anchor="lm")
+        for rect, label, _value, selected, _action in header:
             if selected:
                 self._button(draw, rect, label, HUD_COLOR_ACCENT, HUD_COLOR_DARK)
             else:
                 self._button(draw, rect, label, HUD_COLOR_DARK, HUD_COLOR_LIGHT, outline=HUD_COLOR_GREY)
+
+        # Scroll bar in the right margin, only when the list is longer than the screen
+        limit = menu.max_scroll(state)
+        if limit:
+            track = height - menu.LIST_TOP
+            thumb = track * track / (track + limit)
+            top = menu.LIST_TOP + (track - thumb) * min(state.menu_scroll, limit) / limit
+            draw.rounded_rectangle((menu.ROW_RIGHT + 6, top, menu.ROW_RIGHT + 11, top + thumb), radius=2,
+                                   fill=HUD_COLOR_GREY)

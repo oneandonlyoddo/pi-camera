@@ -99,6 +99,7 @@ class DigitalCamera:
 
         # Initialize touchscreen support (optional)
         self.touchscreen = None
+        self._touch = menu.Touch(camera_state)  # tap vs. drag; used only by the touch thread
         if TOUCHSCREEN_ENABLED and TOUCHSCREEN_AVAILABLE:
             try:
                 self.touchscreen = TouchScreen(on_touch_callback=self.on_touch)
@@ -141,9 +142,9 @@ class DigitalCamera:
         print(f"{source} - capture requested")
         self.camera_state.shutter_requested = True
 
-    def on_touch(self, x, y):
-        """Touchscreen callback (touch thread): the menu, or the shutter outside it (R2)."""
-        if menu.handle_tap(self.camera_state, x * PREVIEW_WIDTH, y * PREVIEW_HEIGHT):
+    def on_touch(self, kind, x, y):
+        """Touchscreen callback (touch thread): "down"/"move"/"up" to the menu, or the shutter outside it (R2)."""
+        if getattr(self._touch, kind)(x * PREVIEW_WIDTH, y * PREVIEW_HEIGHT):
             self.request_capture("Touchscreen")
 
     def capture_photo(self):

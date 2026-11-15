@@ -54,6 +54,8 @@ class CameraState:
     capture_resolution = _locked("_capture_resolution")
     capture_format = _locked("_capture_format")
     menu_open = _locked("_menu_open")
+    menu_page = _locked("_menu_page")  # "" = category list, else the setting's attribute name (menu.py)
+    menu_scroll = _locked("_menu_scroll")  # px the menu list is scrolled up
     preset = _locked("_preset")  # name in presets.PRESETS, "" = none
 
     def __init__(self):
@@ -65,6 +67,8 @@ class CameraState:
         self._capture_resolution = CAPTURE_RESOLUTIONS[0]
         self._capture_format = CAPTURE_FORMAT_DEFAULT
         self._menu_open = False
+        self._menu_page = ""
+        self._menu_scroll = 0
         self._preset = ""
 
     @property

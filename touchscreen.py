@@ -1,7 +1,43 @@
 
+import select
 import threading
+import time
 from evdev import InputDevice, ecodes, list_devices
-from settings import TOUCH_INVERT_X, TOUCH_INVERT_Y, TOUCH_SWAP_XY
+from settings import TOUCH_INVERT_X, TOUCH_INVERT_Y, TOUCH_LIFT_GRACE, TOUCH_SWAP_XY
+
+
+class LiftFilter:
+    """Merges a lift shorter than `grace` seconds into one touch.
+
+    The resistive panel loses contact for 40-130 ms mid-drag (measured 2026-11-15) and reports
+    up + down; without this a drag falls apart into taps. Costs `grace` of latency on a real release.
+    """
+
+    def __init__(self, grace):
+        self.grace = grace
+        self.held = None  # (time, x, y) of a release not yet passed on
+
+    def feed(self, kind, x, y, now):
+        """One raw event -> the events to pass on now."""
+        if kind == "up":
+            self.held = (now, x, y)
+            return []
+        if kind == "down" and self.held:  # contact back in time: the same touch, moved
+            self.held = None
+            return [("move", x, y)]
+        return [(kind, x, y)]
+
+    def timeout(self, now):
+        """Seconds until a held release is due, or None if there is none."""
+        return None if self.held is None else max(0.0, self.held[0] + self.grace - now)
+
+    def expire(self, now):
+        """The held release, once no new contact came within `grace`."""
+        if self.held and now - self.held[0] >= self.grace:
+            _t, x, y = self.held
+            self.held = None
+            return [("up", x, y)]
+        return []
 
 
 def to_screen(raw_x, raw_y, x_range, y_range, swap=TOUCH_SWAP_XY, invert_x=TOUCH_INVERT_X, invert_y=TOUCH_INVERT_Y):
@@ -16,7 +52,7 @@ def to_screen(raw_x, raw_y, x_range, y_range, swap=TOUCH_SWAP_XY, invert_x=TOUCH
 class TouchScreen:
     """
     Touchscreen input handler using evdev.
-    Calls back once per touch-down with the position.
+    Calls back with "down", "move" (while touching) and "up" and the position.
     """
 
     def __init__(self, on_touch_callback=None):
@@ -24,7 +60,8 @@ class TouchScreen:
         Initialize the touchscreen handler.
 
         Args:
-            on_touch_callback: Called as on_touch_callback(x, y) on touch-down, x and y in 0..1 (see to_screen)
+            on_touch_callback: Called as on_touch_callback(kind, x, y), kind "down"/"move"/"up",
+                x and y in 0..1 (see to_screen)
         """
         self.device = None
         self.running = False
@@ -85,42 +122,59 @@ class TouchScreen:
             x_info = next(axes[c] for c in x_codes if c in axes)
             y_info = next(axes[c] for c in y_codes if c in axes)
             raw_x, raw_y = x_info.value, y_info.value
-            touch_active = False  # trigger only once per touch
-            pending = False  # touch-down seen; the position arrives in the same report, so fire at SYN
+            touch_active = False  # one "down" per touch
+            pending = []  # "down"/"up" seen; the position arrives in the same report, so send at SYN
+            moved = False
+            lift = LiftFilter(TOUCH_LIFT_GRACE)
 
-            for event in self.device.read_loop():
-                if not self.running:
-                    break
-
-                if event.type == ecodes.EV_KEY and event.code in (ecodes.BTN_TOUCH, ecodes.BTN_LEFT):
-                    if event.value == 1 and not touch_active:  # Touch down
-                        touch_active = pending = True
-                    elif event.value == 0:  # Touch up
-                        touch_active = False
-
-                elif event.type == ecodes.EV_ABS:
-                    if event.code in x_codes:
-                        raw_x = event.value
-                    elif event.code in y_codes:
-                        raw_y = event.value
-                    elif event.code == ecodes.ABS_MT_TRACKING_ID:  # multi-touch devices
-                        if event.value != -1 and not touch_active:
-                            touch_active = pending = True
-                        elif event.value == -1:
+            while self.running:
+                # wake when a held release comes due; the 0.5 s cap lets stop() end the thread
+                wait = lift.timeout(time.monotonic())
+                ready, _w, _x = select.select([self.device.fd], [], [], 0.5 if wait is None else wait)
+                for event in (self.device.read() if ready else ()):
+                    if event.type == ecodes.EV_KEY and event.code in (ecodes.BTN_TOUCH, ecodes.BTN_LEFT):
+                        if event.value == 1 and not touch_active:  # Touch down
+                            touch_active = True
+                            pending.append("down")
+                        elif event.value == 0 and touch_active:  # Touch up
                             touch_active = False
+                            pending.append("up")
 
-                elif event.type == ecodes.EV_SYN and pending:
-                    pending = False
-                    x, y = to_screen(raw_x, raw_y, (x_info.min, x_info.max), (y_info.min, y_info.max))
-                    print(f"Touch raw=({raw_x}, {raw_y}) screen=({x:.2f}, {y:.2f})")  # for calibration
-                    if self.on_touch_callback:
-                        self.on_touch_callback(x, y)
+                    elif event.type == ecodes.EV_ABS:
+                        if event.code in x_codes:
+                            raw_x, moved = event.value, True
+                        elif event.code in y_codes:
+                            raw_y, moved = event.value, True
+                        elif event.code == ecodes.ABS_MT_TRACKING_ID:  # multi-touch devices
+                            if event.value != -1 and not touch_active:
+                                touch_active = True
+                                pending.append("down")
+                            elif event.value == -1 and touch_active:
+                                touch_active = False
+                                pending.append("up")
+
+                    elif event.type == ecodes.EV_SYN:
+                        kinds = pending or (["move"] if moved and touch_active else [])
+                        pending, moved = [], False
+                        if not kinds:
+                            continue
+                        x, y = to_screen(raw_x, raw_y, (x_info.min, x_info.max), (y_info.min, y_info.max))
+                        if "down" in kinds:
+                            print(f"Touch raw=({raw_x}, {raw_y}) screen=({x:.2f}, {y:.2f})")  # for calibration
+                        for kind in kinds:
+                            self._emit(lift.feed(kind, x, y, time.monotonic()))
+                self._emit(lift.expire(time.monotonic()))
 
         except OSError as e:
             # Device was disconnected or became unavailable
             print(f"Touchscreen device error: {e}")
         except Exception as e:
             print(f"Error in touchscreen event loop: {e}")
+
+    def _emit(self, events):
+        if self.on_touch_callback:
+            for kind, x, y in events:
+                self.on_touch_callback(kind, x, y)
 
     def stop(self):
         """Stop listening for touch events."""

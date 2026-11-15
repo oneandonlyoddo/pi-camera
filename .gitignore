@@ -10,3 +10,8 @@ device-out/
 
 # Runtime settings saved by the camera (per device; dev.sh never copies or cleans it)
 camera_settings.json
+docs/**/*.jpg
+docs/**/*.jpeg
+docs/**/*.png
+docs/**/*.webp
+docs/**/*.gif

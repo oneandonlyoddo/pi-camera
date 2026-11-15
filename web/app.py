@@ -1,17 +1,14 @@
 
 import os
-import sys
 import threading
 from pathlib import Path
 from flask import Flask, render_template, send_from_directory, jsonify, request
 from PIL import Image
 
-# Add parent directory to path to allow importing settings
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import presets  # noqa: E402
-from menu import resolution_label, value_label  # noqa: E402
-from shared_state import is_valid  # noqa: E402
-from settings import (  # noqa: E402 (needs the sys.path line above)
+import presets
+from menu import resolution_label, value_label
+from shared_state import is_valid
+from settings import (
     CAPTURE_FORMATS,
     CAPTURE_RESOLUTIONS,
     COLOUR_TEMP_MAX,
@@ -79,21 +76,7 @@ def generate_thumbnail_if_missing(filename):
 # Absolute paths from settings.py (R4); module-level so tests can point them elsewhere
 photos_path = PHOTOS_DIR
 thumbnails_path = THUMBNAILS_DIR
-
-print(f"Flask serving photos from: {photos_path}")
-print(f"Flask serving thumbnails from: {thumbnails_path}")
-
-if not photos_path.exists():
-    try:
-        photos_path.mkdir(parents=True, exist_ok=True)
-    except Exception as e:
-        print(f"Warning: Could not create photos directory: {e}")
-
-if not thumbnails_path.exists():
-    try:
-        thumbnails_path.mkdir(parents=True, exist_ok=True)
-    except Exception as e:
-        print(f"Warning: Could not create thumbnails directory: {e}")
+thumbnails_path.mkdir(parents=True, exist_ok=True)  # DCIM/ too
 
 @app.route('/')
 def index():
@@ -114,10 +97,6 @@ def index():
 def get_photos():
     """Return a list of photo filenames sorted by date (newest first)."""
     try:
-        if not photos_path.exists():
-            print(f"Warning: Photos path does not exist: {photos_path}")
-            return jsonify([])
-
         # Get all JPG files
         files = list(photos_path.glob(f"*{JPG_EXTENSION}"))
         # Sort by modification time (newest first)
@@ -164,10 +143,8 @@ def serve_thumbnail(filename):
 @app.route('/api/trigger', methods=['POST'])
 def trigger_shutter():
     """Trigger the camera shutter."""
-    if camera_state:
-        camera_state.shutter_requested = True
-        return jsonify({"status": "ok", "message": "Shutter requested"})
-    return jsonify({"status": "error", "message": "Camera state not initialized"}), 500
+    camera_state.shutter_requested = True
+    return jsonify({"status": "ok", "message": "Shutter requested"})
 
 def parse_setting(data, key, low, high):
     """`data[key]` as a float that is 0 (auto) or within [low, high]; None if absent.
@@ -200,9 +177,6 @@ def settings_json():
 @app.route('/api/settings', methods=['POST'])
 def update_settings():
     """Update camera settings (gain, color temp, resolution, format, preset)."""
-    if not camera_state:
-        return jsonify({"status": "error", "message": "Camera state not initialized"}), 500
-
     data = request.get_json(silent=True)
     if not data or not isinstance(data, dict):
         return jsonify({"status": "error", "message": "No data provided"}), 400
@@ -234,10 +208,4 @@ def update_settings():
 @app.route('/api/settings', methods=['GET'])
 def get_settings():
     """Get current camera settings."""
-    if not camera_state:
-        return jsonify({"status": "error"}), 500
     return jsonify(settings_json())
-
-if __name__ == '__main__':
-    # Standalone run (no camera control)
-    app.run(host='0.0.0.0', port=5000, debug=True)

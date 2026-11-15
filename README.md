@@ -302,11 +302,6 @@ Override the defaults with environment variables: `PI_HOST` (SSH host/alias, def
 - Files you delete locally are not deleted on the Pi.
 - The service starts at boot, restarts after a crash, and stops cleanly (`SIGINT`, same as Ctrl+C).
 
-You can also run the web server alone on the Pi, without the camera (trigger and settings return errors):
-```bash
-python3 web/app.py
-```
-
 ## Troubleshooting
 
 ### Camera not detected
@@ -407,8 +402,6 @@ Updates any of the fields; all are optional. `gain` and `color_temp` must be `0`
 ```
 
 - `400` with `{"status": "error", "message": "..."}` if the body is empty or not a JSON object, or any value is invalid (out of range, not a number, NaN, `true`/`false`). Nothing is changed then, not even a valid value in the same request.
-
-`/api/trigger` and `/api/settings` return `500` if the app was started without camera state (for example `python web/app.py`).
 
 ## Known Issues
 

@@ -49,66 +49,37 @@ def to_screen(raw_x, raw_y, x_range, y_range, swap=TOUCH_SWAP_XY, invert_x=TOUCH
     return (1 - x if invert_x else x), (1 - y if invert_y else y)
 
 
+def _find_device():
+    """The first input device with keys and absolute X positions (a touchscreen). Raises OSError if none."""
+    for path in list_devices():
+        device = InputDevice(path)
+        capabilities = device.capabilities(verbose=False)
+        abs_codes = [code for code, _info in capabilities.get(ecodes.EV_ABS, [])]
+        if ecodes.EV_KEY in capabilities and (ecodes.ABS_X in abs_codes or ecodes.ABS_MT_POSITION_X in abs_codes):
+            print(f"Found touchscreen: {device.name} at {device.path}")
+            return device
+        device.close()
+    raise OSError("no touchscreen device found")
+
+
 class TouchScreen:
-    """
-    Touchscreen input handler using evdev.
-    Calls back with "down", "move" (while touching) and "up" and the position.
+    """Touchscreen input via evdev on its own thread.
+
+    Calls on_touch(kind, x, y): kind "down"/"move"/"up", x and y in 0..1 (see to_screen).
     """
 
-    def __init__(self, on_touch_callback=None):
-        """
-        Initialize the touchscreen handler.
-
-        Args:
-            on_touch_callback: Called as on_touch_callback(kind, x, y), kind "down"/"move"/"up",
-                x and y in 0..1 (see to_screen)
-        """
-        self.device = None
+    def __init__(self, on_touch):
+        self.on_touch = on_touch
+        self.device = _find_device()
         self.running = False
         self.thread = None
-        self.on_touch_callback = on_touch_callback
-
-        # Try to find and initialize touchscreen device
-        self._find_touchscreen()
-
-    def _find_touchscreen(self):
-        """
-        Find the touchscreen input device.
-        Looks for devices with touch/absolute positioning capabilities.
-        """
-        try:
-            devices = [InputDevice(path) for path in list_devices()]
-
-            # Look for touchscreen devices
-            for device in devices:
-                # Check if device has touch capabilities
-                capabilities = device.capabilities(verbose=False)
-
-                # Touch devices typically have ABS (absolute positioning) events
-                if ecodes.EV_ABS in capabilities and ecodes.EV_KEY in capabilities:
-                    # Check for touch-specific events
-                    abs_events = capabilities[ecodes.EV_ABS]
-                    if any(event[0] in [ecodes.ABS_X, ecodes.ABS_MT_POSITION_X] for event in abs_events):
-                        self.device = device
-                        print(f"Found touchscreen: {device.name} at {device.path}")
-                        return
-
-            print("No touchscreen device found")
-
-        except Exception as e:
-            print(f"Error finding touchscreen: {e}")
 
     def start(self):
         """Start listening for touch events in a background thread."""
-        if not self.device:
-            print("Cannot start touchscreen: no device available")
-            return False
-
         self.running = True
         self.thread = threading.Thread(target=self._event_loop, daemon=True)
         self.thread.start()
         print("Touchscreen monitoring started")
-        return True
 
     def _event_loop(self):
         """
@@ -172,22 +143,16 @@ class TouchScreen:
             print(f"Error in touchscreen event loop: {e}")
 
     def _emit(self, events):
-        if self.on_touch_callback:
-            for kind, x, y in events:
-                self.on_touch_callback(kind, x, y)
-
-    def stop(self):
-        """Stop listening for touch events."""
-        self.running = False
-        if self.thread and self.thread.is_alive():
-            self.thread.join(timeout=1.0)
-        print("Touchscreen monitoring stopped")
+        for kind, x, y in events:
+            self.on_touch(kind, x, y)
 
     def cleanup(self):
-        """Clean up resources."""
-        self.stop()
-        if self.device:
-            try:
-                self.device.close()
-            except Exception:
-                pass
+        """Stop the thread (it checks `running` at least every 0.5 s) and close the device."""
+        self.running = False
+        if self.thread:
+            self.thread.join(timeout=1.0)
+        try:
+            self.device.close()
+        except Exception:
+            pass
+        print("Touchscreen monitoring stopped")

@@ -30,14 +30,7 @@ from hud import HUD
 import exif
 import menu
 import presets
-
-# Optional: Import touchscreen support
-try:
-    from touchscreen import TouchScreen
-    TOUCHSCREEN_AVAILABLE = True
-except ImportError:
-    TOUCHSCREEN_AVAILABLE = False
-    print("Note: evdev not available - touchscreen support disabled")
+from touchscreen import TouchScreen
 
 
 def controls_for(gain, colour_temp, preset="", tuning=None):
@@ -97,16 +90,13 @@ class DigitalCamera:
 
         self.button = shutter_button(self.request_capture) if GPIO_CONNECTED else None
 
-        # Initialize touchscreen support (optional)
         self.touchscreen = None
         self._touch = menu.Touch(camera_state)  # tap vs. drag; used only by the touch thread
-        if TOUCHSCREEN_ENABLED and TOUCHSCREEN_AVAILABLE:
-            try:
-                self.touchscreen = TouchScreen(on_touch_callback=self.on_touch)
+        if TOUCHSCREEN_ENABLED:
+            try:  # an optional input must not take the camera down
+                self.touchscreen = TouchScreen(self.on_touch)
             except Exception as e:
                 print(f"Could not initialize touchscreen: {e}")
-        elif TOUCHSCREEN_ENABLED and not TOUCHSCREEN_AVAILABLE:
-            print("Touchscreen enabled in settings but evdev not available")
 
         self.photos_dir.mkdir(parents=True, exist_ok=True)
         print(f"Photos will be saved to: {self.photos_dir}")

@@ -14,7 +14,7 @@ Facts about the hardware and the targets that the code has to respect. Fill in o
 - **Display:** Waveshare 3.5 inch LCD HDMI 480x320px
 - **Touch controller:** XPT2046, kernel driver `ADS7846 Touchscreen` (`/dev/input/event2`): `ABS_X` 280–3840, `ABS_Y` 428–3770, `BTN_TOUCH`, no multi-touch. Raw axes vs. the screen as seen (calibrated by hand 2026-11-15): same axes, both inverted (`TOUCH_INVERT_X = TOUCH_INVERT_Y = True`).
 - **Framebuffer:** 800x480 (`fbset`), scaled by the panel to 480x320; HUD and menu coordinates are in 800x480.
-- **Shutter button:** GPIO 17 (BCM) <!-- wiring: to GND, internal pull-up? -->
+- **Shutter button:** GPIO 17 (BCM), wired to GND, internal pull-up (gpiozero default). Debounce 20 ms: with the lgpio backend (gpiozero 2.0.1, python3-lgpio 0.2.2) `bounce_time` means "stable for this long", so 300 ms ignored quick taps and delayed every press. A missing or busy pin logs a warning and the camera runs without the button.
 - **Power:** Aim is to run off 2 x 18650 cells
 - **Storage:** micro SD shared with OS 32GB
 - **Enclosure / mounting:** camera sensor upright (saved photos need no rotation); display mounted upside down → `PREVIEW_ROTATE = True` rotates preview and HUD only <!-- enclosure details -->

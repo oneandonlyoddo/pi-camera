@@ -53,16 +53,28 @@ def controls_for(gain, colour_temp):
 CAPTURE_STREAMS = {"JPG": ["main"], "RAW": ["raw"], "JPG+RAW": ["main", "raw"]}
 
 
+def shutter_button(request_capture):
+    """The GPIO shutter button wired to `request_capture`, or None if the pin can't be set up.
+
+    An optional button must not take the camera down (pin in use, no GPIO access)."""
+    try:
+        button = Button(GPIO_BUTTON_PIN, bounce_time=GPIO_DEBOUNCE_TIME)
+    except Exception as e:
+        print(f"Could not initialize GPIO button on pin {GPIO_BUTTON_PIN}: {e}")
+        return None
+    button.when_pressed = lambda: request_capture("Shutter button")
+    return button
+
+
 class DigitalCamera:
     """Digital camera controller for Raspberry Pi HQ Camera module."""
 
-    def __init__(self, camera_state, button_pin=GPIO_BUTTON_PIN, photos_dir=PHOTOS_DIR):
+    def __init__(self, camera_state, photos_dir=PHOTOS_DIR):
         """
         Initialize the digital camera.
 
         Args:
             camera_state: Shared CameraState; every shutter source signals through it (R2)
-            button_pin: GPIO pin number for the shutter button (BCM mode)
             photos_dir: Directory to save captured photos
         """
         self.camera_state = camera_state
@@ -73,10 +85,7 @@ class DigitalCamera:
         self._last_settings = None  # (gain, colour_temp) last sent to the camera
         self._last_saved = None  # CameraState.snapshot() last written to SETTINGS_FILE
 
-        self.button = None
-        if GPIO_CONNECTED:
-            self.button = Button(button_pin, bounce_time=GPIO_DEBOUNCE_TIME)
-            self.button.when_pressed = lambda: self.request_capture("Shutter button")
+        self.button = shutter_button(self.request_capture) if GPIO_CONNECTED else None
 
         # Initialize touchscreen support (optional)
         self.touchscreen = None

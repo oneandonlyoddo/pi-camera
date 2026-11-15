@@ -6,7 +6,7 @@ Status: `done` · `wip` · `planned` · `idea` · `rejected`. A rejected feature
 |---|---|---|
 | JPG + DNG capture at 4056x3040 | done | now one choice in the touch menu |
 | Fullscreen DRM preview with HUD | done | |
-| Shutter: GPIO button | done | off by default (`GPIO_CONNECTED`) |
+| Shutter: GPIO button | done | off by default (`GPIO_CONNECTED`). 2026-11-15: 20 ms debounce, GPIO failure no longer crashes the app, mock-pin tests. Real press not yet tested on hardware |
 | Shutter: touchscreen | done | any touch outside the MENU button fires |
 | Shutter: web button | done | |
 | Web gallery with thumbnails + lightbox | done | redesign 2026-11-15 (docs/design/web.md): orange/black palette, photos grouped by date, pill tab bar. Look still needs a person |

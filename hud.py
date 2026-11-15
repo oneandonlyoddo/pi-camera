@@ -68,7 +68,12 @@ class HUD:
         font = self.font
         width, height = self.preview_size
 
-        try:
+        if state.menu_open:  # the menu replaces the data fields, so none peek out around the panel
+            self._draw_menu(draw, state)
+            self._show(camera, overlay_img)
+            return
+
+        try:  # waits for the next frame, so only when the data fields show (not on every menu drag step)
             metadata = camera.capture_metadata()
             exp_ms = metadata.get("ExposureTime", 0) / 1000  # microseconds -> ms
             gain = metadata.get("AnalogueGain", 0)
@@ -76,11 +81,6 @@ class HUD:
             meta_str = f"Exp: {exp_ms:.1f}ms - Gain: {gain:.2f}x - WB: {temp:.0f}K"
         except Exception:
             meta_str = "Waiting..."
-
-        if state.menu_open:  # the menu replaces the data fields, so none peek out around the panel
-            self._draw_menu(draw, state)
-            self._show(camera, overlay_img)
-            return
 
         # Top bar: capture settings left, time right
         top_y = HUD_BAR_HEIGHT / 2

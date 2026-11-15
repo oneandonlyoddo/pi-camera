@@ -98,3 +98,20 @@ def test_header_is_solid_over_scrolled_rows(render, state):
     img = render()
     x = menu.ROW_LEFT + 4  # a row's left edge, if it were drawn under the header
     assert {tuple(c) for c in img[menu.LIST_TOP - 6:menu.LIST_TOP, x, :3]} == {HUD_COLOR_DARK}
+
+
+def test_open_menu_does_not_wait_for_a_frame(state):
+    """capture_metadata() blocks until the next frame; a menu redraw (every drag step) must not wait for it."""
+    import hud
+
+    class CountingCamera(FakeCamera):
+        calls = 0
+
+        def capture_metadata(self):
+            self.calls += 1
+            return super().capture_metadata()
+
+    cam = CountingCamera()
+    state.menu_open = True
+    hud.HUD().update(cam, state)
+    assert cam.calls == 0

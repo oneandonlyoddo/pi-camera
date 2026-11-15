@@ -48,7 +48,7 @@ scripts/dev.sh --install  # one-time service install
 - Copies `git ls-files -co --exclude-standard`, minus `.claude/`, `audits/`, `docs/`, `scripts/` and `*.psd`. Files deleted locally stay on the Pi until `--clean`.
 - The service runs from the project root with `KillSignal=SIGINT` (so `cleanup()` runs) and `Restart=always`.
 
-On the Pi: **never use pip**. Install packages with apt (`python3-picamera2 python3-gpiozero python3-numpy python3-evdev python3-pil python3-flask`, plus `python3-pytest` for tests). To run by hand, stop the service first, because the camera, display and port 5000 can have only one owner: `sudo systemctl stop pi-camera && cd ~/workspace/pi-camera && python3 main.py`.
+On the Pi: **never use pip**. Install packages with apt (`python3-picamera2 python3-gpiozero python3-numpy python3-evdev python3-pil python3-flask python3-piexif python3-pidng`, plus `python3-pytest` for tests). To run by hand, stop the service first, because the camera, display and port 5000 can have only one owner: `sudo systemctl stop pi-camera && cd ~/workspace/pi-camera && python3 main.py`.
 
 Line endings: the Windows checkout uses CRLF, and files are copied as-is. Keep `*.sh` and `*.service` files LF (pinned in `.gitattributes`).
 

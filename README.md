@@ -32,7 +32,7 @@ The web server and the camera loop communicate through a lock-protected `CameraS
 ### Web interface
 - 🖼️ **Gallery**: thumbnail grid with lazy loading, full-size lightbox on tap
 - 🎮 **Remote shutter**
-- ⚙️ **Live controls** for analogue gain and colour temperature
+- ⚙️ **Live controls** for every touch-menu setting: resolution, format, preset, white balance (slider + presets) and gain (slider + steps)
 - 📱 **Mobile-friendly** layout
 
 ### Development
@@ -71,7 +71,7 @@ The app runs on the Raspberry Pi only. Use `apt`, not `pip`. These packages are 
 
 ```bash
 sudo apt install python3-picamera2 python3-gpiozero python3-numpy python3-evdev
-sudo apt install python3-pil python3-flask
+sudo apt install python3-pil python3-flask python3-piexif python3-pidng   # piexif/pidng also come with python3-picamera2
 sudo apt install python3-pytest   # only needed to run the tests
 ```
 
@@ -142,7 +142,7 @@ The current resolution and format are shown top left. DNG-only shots are not lis
    - Shows all `.jpg` files in `DCIM/`, newest first (by file modification time)
    - Tap a thumbnail to open the full image
    - DNG files are not shown
-   - The list loads once per page load; reload the page to see new photos
+   - The list loads with the page; tap the round refresh button next to the title to see new photos
 
 4. **Settings tab**
    - **Shutter button**: capture remotely
@@ -191,8 +191,8 @@ GPIO_CONNECTED = False            # Set to True once the button is wired up
 ```python
 TOUCHSCREEN_ENABLED = True        # Touchscreen shutter + menu (Pi only, requires evdev)
 TOUCH_SWAP_XY = False             # Calibration: map touch axes onto the screen as seen
-TOUCH_INVERT_X = False
-TOUCH_INVERT_Y = False
+TOUCH_INVERT_X = True
+TOUCH_INVERT_Y = True
 TOUCH_LIFT_GRACE = 0.15          # s; shorter lifts are contact lost mid-drag, not a release
 ```
 
@@ -248,9 +248,22 @@ GAIN_MIN = 1.0                    # Analogue gain (0 = auto, else GAIN_MIN..GAIN
 GAIN_MAX = 16.0
 COLOUR_TEMP_MIN = 2000            # Colour temperature in K (0 = auto, else MIN..MAX)
 COLOUR_TEMP_MAX = 8000
+WB_PRESETS = {"AUTO": 0, "INDOOR": 3000, "FLUOR": 4000, "SUNNY": 5500, "CLOUDY": 6500, "SHADE": 7500}  # max ~7 chars
+GAIN_STEPS = (0.0, 1.0, 2.0, 4.0, 8.0, 16.0)   # touch menu + web buttons; the web slider sets any value in range
 ```
 
 The web API rejects values outside these ranges, and the web sliders use them.
+
+### Presets
+```python
+PRESETS_FILE = PROJECT_ROOT / "presets.json"   # the recipes (see Presets)
+PRESET_NAME_MAX = 12              # longer names don't fit a menu button
+TUNING_FILE = "imx477.json"       # libcamera tuning file the presets modify
+PRESET_COLOR_STEP = 0.1           # Saturation per "color" step (1.0 = neutral)
+PRESET_SHARPNESS_STEP = 0.25      # Sharpness per step
+PRESET_TONE_STEP = 0.02           # max tone curve shift per highlight/shadow step
+PRESET_WB_STEP = 0.05             # red/blue gain factor per WB shift step
+```
 
 ### HUD
 ```python
@@ -266,7 +279,7 @@ HUD_GRID_WIDTH = 2                       # Rule-of-thirds grid, drawn in code
 HUD_BAR_HEIGHT = 52                      # Top and bottom bars
 ```
 
-The HUD uses only the four colours of `docs/design/colour_scheme.jpg`, solid (no transparency). Layout: a dark bar at the top (resolution + format left, time right) and at the bottom (exposure/gain/WB left, MENU right); the grid runs behind the bars.
+The HUD uses only the four colours of `docs/design/colour_scheme.jpg`, solid (no transparency). Layout: a dark bar at the top (resolution + format left, preset name centre, time right) and at the bottom (exposure/gain/WB left, MENU right); the grid runs behind the bars.
 
 ## Development Workflow
 
@@ -406,6 +419,7 @@ Updates any of the fields; all are optional. `gain` and `color_temp` must be `0`
 ## Known Issues
 
 - **The HUD pauses while a photo is saved:** writing the JPG and DNG takes a few seconds on the Pi Zero, during which the HUD is not updated and shutter presses are ignored. The preview itself keeps running.
+- **No error on the web page when a capture fails:** `/api/trigger` answers "ok" as soon as the request is queued; a failed capture only shows in the log.
 
 ## File Structure
 
@@ -417,6 +431,8 @@ pi-camera/
 ├── shared_state.py      # Thread-safe state shared between web server and camera
 ├── hud.py               # HUD overlay (PIL)
 ├── menu.py              # Touch menu layout, tap and drag handling
+├── presets.py           # Preset (film simulation) validation and mapping to camera settings
+├── presets.json         # The preset recipes
 ├── exif.py              # EXIF tags for JPG (piexif) and DNG (pidng)
 ├── settings.py          # Static configuration
 ├── web/
@@ -433,6 +449,7 @@ pi-camera/
 │   └── pi-camera.service  # systemd unit template
 ├── tests/               # pytest suite, runs on the Pi (scripts/dev.sh --test)
 ├── docs/                # Feature list, specs, design notes
+├── audits/              # Earlier code audit reports
 ├── .claude/             # Claude Code harness: rules, skills, hooks, settings
 ├── DCIM/                # Photos (created automatically, git-ignored)
 │   └── thumbs/          # Thumbnails

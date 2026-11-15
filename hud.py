@@ -36,15 +36,8 @@ def base_image(size):
 class HUD:
     """Head-Up Display (HUD) controller for the camera overlay."""
 
-    def __init__(self, width=PREVIEW_WIDTH, height=PREVIEW_HEIGHT):
-        """
-        Initialize the HUD.
-
-        Args:
-            width: Width of the preview window
-            height: Height of the preview window
-        """
-        self.preview_size = (width, height)
+    def __init__(self):
+        self.preview_size = (PREVIEW_WIDTH, PREVIEW_HEIGHT)
         self.base = base_image(self.preview_size)  # static: drawn once, copied per update
 
         # Try to use a nice font, fall back to default if not available

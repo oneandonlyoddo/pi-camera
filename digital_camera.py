@@ -1,7 +1,6 @@
 
 import time
 import datetime
-from pathlib import Path
 from picamera2 import Picamera2, Preview
 from pidng.camdefs import Picamera2Camera
 from pidng.core import PICAM2DNG
@@ -70,18 +69,11 @@ def shutter_button(request_capture):
 class DigitalCamera:
     """Digital camera controller for Raspberry Pi HQ Camera module."""
 
-    def __init__(self, camera_state, photos_dir=PHOTOS_DIR):
-        """
-        Initialize the digital camera.
-
-        Args:
-            camera_state: Shared CameraState; every shutter source signals through it (R2)
-            photos_dir: Directory to save captured photos
-        """
+    def __init__(self, camera_state):
+        """`camera_state`: shared CameraState; every shutter source signals through it (R2)."""
         self.camera_state = camera_state
-        self.photos_dir = Path(photos_dir)
         self.camera = None
-        self.hud = HUD(PREVIEW_WIDTH, PREVIEW_HEIGHT)
+        self.hud = HUD()
         self._preset = camera_state.preset  # preset whose tuning the open camera uses
         self._base_tuning = Picamera2.load_tuning_file(TUNING_FILE)  # read once; presets modify copies
 
@@ -95,8 +87,8 @@ class DigitalCamera:
             except Exception as e:
                 print(f"Could not initialize touchscreen: {e}")
 
-        self.photos_dir.mkdir(parents=True, exist_ok=True)
-        print(f"Photos will be saved to: {self.photos_dir}")
+        PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
+        print(f"Photos will be saved to: {PHOTOS_DIR}")
 
     def setup_camera(self):
         """Open and configure the camera with the tuning for self._preset, start the preview."""
@@ -143,7 +135,7 @@ class DigitalCamera:
                                      self._base_tuning)["AwbEnable"]
         shot_time = datetime.datetime.now().astimezone()  # one time for filename and EXIF
         timestamp = shot_time.strftime(FILENAME_TIMESTAMP_FORMAT)
-        jpg_path = self.photos_dir / f"{FILENAME_PREFIX}_{timestamp}{JPG_EXTENSION}"
+        jpg_path = PHOTOS_DIR / f"{FILENAME_PREFIX}_{timestamp}{JPG_EXTENSION}"
         raw_path = jpg_path.with_suffix(RAW_EXTENSION)
         # No transform: saved photos are upright, PREVIEW_ROTATE is for the display only (R8).
         # The raw stream is always configured: its size picks the full-field-of-view sensor mode.

@@ -13,29 +13,20 @@ from shared_state import CameraState
 from web.app import app, init_app
 from digital_camera import DigitalCamera
 
-def run_flask(host='0.0.0.0', port=5000):
-    """Run the Flask app in a thread."""
-    # Disable reloader to avoid running Main thread logic twice
-    app.run(host=host, port=port, debug=False, use_reloader=False)
+def run_flask():
+    """The web server, on its own thread. No reloader: it would run main() a second time."""
+    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
+
 
 def main():
-    """Main entry point for the camera application."""
-    # 1. Initialize Shared State
     camera_state = CameraState()
-    camera_state.load(SETTINGS_FILE)  # gain, WB, resolution, format from the last run
-
-    # 2. Initialize Flask App with State
+    camera_state.load(SETTINGS_FILE)  # settings from the last run
     init_app(camera_state)
-    
-    # 3. Start Flask in Background Thread
+
     print("Starting Web Interface on port 5000...")
-    flask_thread = threading.Thread(target=run_flask, daemon=True)
-    flask_thread.start()
-    
-    # 4. Initialize and Run Camera (Main Thread)
-    # Pass camera_state to the camera instance
-    camera = DigitalCamera(camera_state=camera_state)
-    camera.run()
+    threading.Thread(target=run_flask, daemon=True).start()
+
+    DigitalCamera(camera_state).run()  # the camera loop owns the main thread (R2)
 
 if __name__ == "__main__":
     main()

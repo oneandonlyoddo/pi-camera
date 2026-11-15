@@ -15,6 +15,7 @@ Status: `done` · `wip` · `planned` · `idea` · `rejected`. A rejected feature
 | Runtime settings survive restart | done | gain, WB, resolution, format in `camera_settings.json` |
 | Web gallery refresh button | done | round button next to the headline reloads the photo list (no-store fetch for the iOS home-screen app). Tap still needs a person |
 | EXIF in JPG + DNG | done | only values measured at capture or reported by the sensor; no aperture/lens (manual lens, unknown). Artist/Copyright from `settings.py`. Time zone, exposure/WB mode, pixel size: JPG only (pidng lacks the tags) |
+| Presets / film simulation (Fuji-style recipes) | wip | 2026-11-15: verified on device (live switch, shots: Acros mono, Portra warmer R/B 1.41→1.56). Menu row taps + HUD name still need a person; step sizes still need tuning by eye. `presets.json`; colour, mono, highlight, shadow, sharpness, fixed WB (K) + WB shift, exposure comp. Applied to preview + JPG, not DNG. Switching reopens the camera with a modified tuning file. Not yet: grain, halation, colour matrix (film colour, Acros+R/G), Colour Chrome, clarity, NR. Reference recipes + sample shots: `docs/presets/` |
 | <!-- next feature --> | | |
 
 ## Rejected

@@ -11,6 +11,7 @@ A Raspberry Pi Zero 2 W camera with the HQ Camera: fullscreen preview with a HUD
 ## Project context (read when relevant)
 
 - [docs/FEATURES.md](docs/FEATURES.md): feature status and rejected ideas. Read it before proposing or adding a feature, and update it after.
+- `docs/specs/`: specs for planned features, written with `/spec`. Read the matching one before implementing.
 - [docs/SPECS.md](docs/SPECS.md): hardware and performance targets. Read it before changing capture, display, GPIO, touch or performance.
 - [docs/design/hud.md](docs/design/hud.md) + images: read before changing `hud.py` or the HUD assets.
 - [docs/design/web.md](docs/design/web.md) + images: read before changing `web/templates/` or `web/static/`.
@@ -19,7 +20,7 @@ A Raspberry Pi Zero 2 W camera with the HQ Camera: fullscreen preview with a HUD
 ## Harness
 
 - **Rules** (`.claude/rules/`): `core.md` R1, R4, R6, R9, R10, R11 (always loaded); `camera.md` R2, R8 (camera files); `web.md` R7 (`web/**`). They describe the target state; the code breaks some of them (Known issues). Cite rule IDs in plans and commits.
-- **Skills:** `/on-device` (verify on the Pi, health check), `/feature` (feature workflow, with recipes for settings and triggers), `/sync-docs` (docs vs code), `/commit` (split finished work into small working commits, local only; run only when the user asks).
+- **Skills:** `/on-device` (verify on the Pi, health check), `/feature` (feature workflow, with recipes for settings and triggers), `/spec` (plan a future feature in conversation, no code; decisions go to `docs/specs/<slug>.md`), `/sync-docs` (docs vs code), `/commit` (split finished work into small working commits, local only; run only when the user asks).
 - **Hooks:**
   - `guard.py` (before every tool call) blocks (1) anything that could delete, move or overwrite `DCIM/` (R11) and (2) file access outside the project: home folder, absolute paths elsewhere, `..` escapes. Allowed outside: the session scratchpad, Claude's own folder for this project, reading plugin files; `~` in `ssh` commands means the Pi. It fails closed (blocks on its own errors). Tests: `uvx --quiet --with pytest pytest -q -p no:cacheprovider .claude/hooks`.
   - `ruff_check.py` (after every Python edit) reports ruff findings for that file; skips quietly if ruff cannot run.

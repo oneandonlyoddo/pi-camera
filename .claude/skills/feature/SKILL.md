@@ -8,6 +8,7 @@ argument-hint: "<feature description>"
 
 ## 1. Check what exists
 
+- A spec exists (`docs/specs/<slug>.md`, made with `/spec`)? Read it. Its Decisions and Requirements are settled: don't ask about them again, and follow them. Ask only about what it leaves open. Status still `draft` → tell the user and ask whether to finish it with `/spec` first.
 - Read `docs/FEATURES.md`.
   - Listed under **Rejected** → stop. Tell the user it was rejected and why. Continue only if they explicitly overrule it.
   - Already `done`/`wip` → say so and ask whether this is a change to it.

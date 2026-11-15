@@ -19,7 +19,7 @@ A Raspberry Pi Zero 2 W camera with the HQ Camera: fullscreen preview with a HUD
 ## Harness
 
 - **Rules** (`.claude/rules/`): `core.md` R1, R4, R6, R9, R10, R11 (always loaded); `camera.md` R2, R8 (camera files); `web.md` R7 (`web/**`). They describe the target state; the code breaks some of them (Known issues). Cite rule IDs in plans and commits.
-- **Skills:** `/on-device` (verify on the Pi, health check), `/feature` (feature workflow, with recipes for settings and triggers), `/sync-docs` (docs vs code).
+- **Skills:** `/on-device` (verify on the Pi, health check), `/feature` (feature workflow, with recipes for settings and triggers), `/sync-docs` (docs vs code), `/commit` (split finished work into small working commits, local only; run only when the user asks).
 - **Hooks:**
   - `guard.py` (before every tool call) blocks (1) anything that could delete, move or overwrite `DCIM/` (R11) and (2) file access outside the project: home folder, absolute paths elsewhere, `..` escapes. Allowed outside: the session scratchpad, Claude's own folder for this project, reading plugin files; `~` in `ssh` commands means the Pi. It fails closed (blocks on its own errors). Tests: `uvx --quiet --with pytest pytest -q -p no:cacheprovider .claude/hooks`.
   - `ruff_check.py` (after every Python edit) reports ruff findings for that file; skips quietly if ruff cannot run.

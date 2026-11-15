@@ -45,17 +45,28 @@ def _valid(name, preset):
     return True
 
 
-def load(path):
-    """{name: preset} from `path`. A missing or broken file gives {}; invalid presets are skipped."""
+def read_json_object(path, fallback):
+    """The JSON object in `path`, or None if the file is missing, unreadable or not an object.
+
+    The last two print a warning that ends with `fallback` (what happens instead).
+    """
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        return {}
+        return None
     except (OSError, ValueError) as e:
-        print(f"Warning: could not read {path.name}, no presets: {e}")
-        return {}
+        print(f"Warning: could not read {path.name}, {fallback}: {e}")
+        return None
     if not isinstance(data, dict):
-        print(f"Warning: {path.name} is not a JSON object, no presets")
+        print(f"Warning: {path.name} is not a JSON object, {fallback}")
+        return None
+    return data
+
+
+def load(path):
+    """{name: preset} from `path`. A missing or broken file gives {}; invalid presets are skipped."""
+    data = read_json_object(path, "no presets")
+    if data is None:
         return {}
     presets = {}
     for name, preset in data.items():

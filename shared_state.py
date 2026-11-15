@@ -111,15 +111,8 @@ class CameraState:
 
     def load(self, path):
         """Restore settings from `path`. Missing file: defaults. Invalid values are skipped."""
-        try:
-            data = json.loads(path.read_text())
-        except FileNotFoundError:
-            return
-        except (OSError, ValueError) as e:
-            print(f"Warning: could not read {path.name}, using defaults: {e}")
-            return
-        if not isinstance(data, dict):
-            print(f"Warning: {path.name} is not a JSON object, using defaults")
+        data = presets.read_json_object(path, "using defaults")
+        if data is None:
             return
         for key in PERSISTED:
             if key not in data:

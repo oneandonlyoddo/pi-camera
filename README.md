@@ -159,7 +159,7 @@ All static settings are in `settings.py`. Gain, colour temperature, resolution a
 ### GPIO
 ```python
 GPIO_BUTTON_PIN = 17              # Shutter button pin (BCM numbering)
-GPIO_DEBOUNCE_TIME = 0.3          # Debounce time in seconds
+GPIO_DEBOUNCE_TIME = 0.02         # Contact must be stable this long (s); longer drops quick taps
 GPIO_CONNECTED = False            # Set to True once the button is wired up
 ```
 

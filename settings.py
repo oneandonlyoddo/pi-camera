@@ -11,7 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent  # all paths below are absolute (
 # GPIO CONFIGURATION
 # ============================================================================
 GPIO_BUTTON_PIN = 17  # GPIO pin for shutter button (BCM numbering)
-GPIO_DEBOUNCE_TIME = 0.3  # Button debounce time in seconds
+GPIO_DEBOUNCE_TIME = 0.02  # seconds the contact must be stable before a press fires (lgpio); longer drops quick taps
 GPIO_CONNECTED = False
 
 # ============================================================================

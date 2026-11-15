@@ -39,7 +39,7 @@ scripts/dev.sh --health   # service, picamera2 version, memory, disk, throttling
 scripts/dev.sh            # copy, restart, follow log
 scripts/dev.sh --fg       # copy, stop service, run in terminal
 scripts/dev.sh --logs     # follow log
-scripts/dev.sh --clean    # list files on the Pi not in the working copy; deletes after y/N (never DCIM/, .git/). Without a terminal: list only
+scripts/dev.sh --clean    # list files on the Pi not in the working copy; deletes after y/N (never DCIM/, .git/, camera_settings.json). Without a terminal: list only
 scripts/dev.sh --install  # one-time service install
 ```
 
@@ -60,10 +60,11 @@ Line endings: the Windows checkout uses CRLF, and files are copied as-is. Keep `
 ## Gotchas
 
 - **Paths** in `settings.py` are absolute `Path`s from `PROJECT_ROOT` (R4); the app works from any working directory.
-- **Threads:** the camera loop runs on the main thread and is the only code that touches Picamera2 (R2). Flask, the touchscreen (evdev) and gpiozero callbacks run on their own threads and only call `request_capture(source)` / set `CameraState.shutter_requested`, a `threading.Event` the loop waits on.
+- **Threads:** the camera loop runs on the main thread and is the only code that touches Picamera2 (R2). Flask, the touchscreen (evdev) and gpiozero callbacks run on their own threads and only write `CameraState`: `request_capture(source)` / `shutter_requested`, settings, or (touch) `menu.handle_tap()`. Every write sets one wake `threading.Event` that the loop waits on (`CameraState.wait()`), so a menu tap redraws the HUD at once.
 - **Capture** (`capture_photo`): one exposure via `switch_mode_and_capture_buffers`, DNG saved first, then JPG. It runs on the camera loop, so the HUD pauses while saving (~4–6 s) and requests made meanwhile are dropped. Why this API and not the others: `docs/SPECS.md`.
+- **Touch menu** (`menu.py`): one layout in HUD pixels as the user sees the screen; `hud.py` draws it and `handle_tap()` hit-tests it. Touch positions come from `touchscreen.to_screen()` with the `TOUCH_*` calibration flags in `settings.py`.
 - **Thumbnails** are made only on demand by `web/app.py` (first gallery view); the camera does not make them.
-- **Runtime settings** (gain, WB) live only in memory and reset to auto on restart. Ranges: `GAIN_*` / `COLOUR_TEMP_*` in `settings.py`, used by the API validation and the web sliders. `controls_for()` in `digital_camera.py` maps them to Picamera2 controls (`ColourTemperature`, not `ColourGains`).
+- **Runtime settings** (gain, WB, capture resolution, format) are in `CameraState`; the camera loop saves them to `camera_settings.json` (git-ignored, never copied or cleaned by `dev.sh`) when they change, and `main.py` loads them at startup (invalid values skipped). To test a resolution/format on the Pi without touching the screen, write that file and restart the service. Choices: `CAPTURE_RESOLUTIONS` / `CAPTURE_FORMATS`. Ranges: `GAIN_*` / `COLOUR_TEMP_*` in `settings.py`, used by the API validation and the web sliders. `controls_for()` in `digital_camera.py` maps them to Picamera2 controls (`ColourTemperature`, not `ColourGains`).
 - **Hardware facts** (display orientation, `buffer_count=2`, capture memory, OS and library versions): `docs/SPECS.md`. Rules about them: R8.
 - **Pi folder** `~/workspace/pi-camera` is an old git clone. The desktop is the source of truth; do not use git on the Pi.
 - **New runtime setting:** follow `.claude/skills/feature/setting.md`.

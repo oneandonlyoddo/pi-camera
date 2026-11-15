@@ -7,3 +7,6 @@ __pycache__
 # On-device captures copied back by scripts/dev.sh --shoot
 device-out/
 .pytest_cache/
+
+# Runtime settings saved by the camera (per device; dev.sh never copies or cleans it)
+camera_settings.json

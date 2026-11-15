@@ -24,7 +24,7 @@ Lint is not a step here: the ruff hook already checks every Python file you edit
 1. **Tests:** `scripts/dev.sh --test`. A test marked `xfail(strict=True)` that now passes ("XPASS") means a known issue is fixed: remove the marker, and the issue from CLAUDE.md and README (R9).
 2. **Restart:** `scripts/dev.sh --check`. On FAIL, read the log it printed, fix, repeat. Do not retry unchanged code.
 3. **Shoot** if the change touches capture, camera settings, the HUD, the web server, or `main.py`: `scripts/dev.sh --shoot`.
-   - Check the printed JPG size against `CAPTURE_WIDTH` x `CAPTURE_HEIGHT` in `settings.py`, and that the thumbnail fits 300x225.
+   - Check the printed JPG size against `capture_resolution` in the Pi's `camera_settings.json` (default 4056x3040), and that the thumbnail fits 300x225. `--shoot` expects JPG + DNG, so it fails if the saved format is JPG or RAW.
    - Look at `device-out/<name>.jpg` with the Read tool: not black or blown out, upright (see R8), no HUD burned into the photo (the HUD is a preview overlay only).
 4. **Settings changes** (gain, white balance, new runtime settings): set the value, shoot, compare with an auto shot, then reset to auto. Setting a value needs plain ssh, which asks the user for permission:
    ```bash

@@ -14,4 +14,4 @@ For values the user changes while the camera runs (like gain and colour temperat
 8. **On device:** `/on-device` verify, including step 4 (set the value via curl, shoot, compare with auto, reset).
 9. **Docs:** README Configuration + API, `docs/FEATURES.md`.
 
-Settings live in memory and reset to auto on restart. If persistence is wanted, that is a separate design decision. Ask the user.
+Settings are saved to `camera_settings.json`: add the new key to `PERSISTED` and `is_valid()` in `shared_state.py` (with a test in `tests/test_menu.py`). If it belongs in the touch menu, add a row in `menu.buttons()`.

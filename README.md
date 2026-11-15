@@ -1,6 +1,6 @@
 # Raspberry Pi Zero Digital Camera
 
-A digital camera built on the Raspberry Pi HQ Camera module, with a built-in web interface. It turns a Raspberry Pi into a camera with a hardware shutter button, touchscreen trigger, fullscreen preview with HUD, a remote web gallery and remote controls, and saves every shot as JPG and RAW (DNG).
+A digital camera built on the Raspberry Pi HQ Camera module, with a built-in web interface. It turns a Raspberry Pi into a camera with a hardware shutter button, touchscreen trigger, fullscreen preview with HUD, a remote web gallery and remote controls, and saves shots as JPG, RAW (DNG) or both, chosen in an on-screen touch menu.
 
 ## Architecture
 
@@ -16,13 +16,15 @@ The web server and the camera loop communicate through a lock-protected `CameraS
 
 ### Camera
 - 📸 **Hardware shutter button** via GPIO (enable with `GPIO_CONNECTED = True`)
-- 👆 **Touchscreen trigger**: touch anywhere on the screen to capture (optional, Pi only)
+- 👆 **Touchscreen trigger**: touch anywhere outside the MENU button to capture (optional, Pi only)
+- 📋 **Touch menu**: MENU button (top left) to choose capture resolution and format
 - 🖥️ **Fullscreen preview** on the connected display (DRM preview, 800x480)
-- 📷 **Full-resolution capture**: 4056x3040 (12.3 MP)
-- 🎞️ **JPG + RAW (DNG)** for every shot
+- 📷 **Capture resolution**: 4056x3040 (12 MP) or 2028x1520 (3 MP), both the full field of view
+- 🎞️ **Capture format**: JPG, RAW (DNG) or JPG + RAW (same frame)
+- 💾 **Settings survive a restart**: gain, white balance, resolution and format are saved to `camera_settings.json`
 - 🖼️ **Thumbnails** generated on first view in the gallery (`DCIM/thumbs/`)
 - 🕒 **Timestamped filenames**
-- 📊 **HUD overlay** with time, date, exposure, gain and white balance
+- 📊 **HUD overlay** with time, date, exposure, gain, white balance, capture resolution and format
 
 ### Web interface
 - 🖼️ **Gallery**: thumbnail grid with lazy loading, full-size lightbox on tap
@@ -88,13 +90,22 @@ To start the camera automatically at boot, install it as a systemd service (see 
 1. The camera starts with a fullscreen preview.
 2. Capture a photo with any of these:
    - **Hardware button** (if `GPIO_CONNECTED = True`)
-   - **Touchscreen**: touch anywhere on the screen (if a touchscreen is detected)
+   - **Touchscreen**: touch anywhere except the MENU button (if a touchscreen is detected)
    - **Web interface**: shutter button in the Settings tab
-3. Each capture takes one exposure and saves it twice, both from the same frame:
-   - `DCIM/IMG_YYYYMMDD_HHMMSS_ffffff.jpg`: JPEG image
-   - `DCIM/IMG_YYYYMMDD_HHMMSS_ffffff.dng`: RAW DNG file
+3. Each capture takes one exposure and saves it in the chosen format (both files from the same frame):
+   - `DCIM/IMG_YYYYMMDD_HHMMSS_ffffff.jpg`: JPEG image (formats JPG and JPG+RAW)
+   - `DCIM/IMG_YYYYMMDD_HHMMSS_ffffff.dng`: RAW DNG file (formats RAW and JPG+RAW)
 
-   The preview returns about 2 s after the trigger; the files are written a few seconds later. Shutter presses during a capture are ignored. The gallery creates a 300x225 thumbnail in `DCIM/thumbs/` the first time it shows a photo.
+   The preview returns about 2 s after the trigger; the files are written a few seconds later (12 MP JPG+RAW: 5–9 s; 3 MP: about 2 s). Shutter presses during a capture are ignored. The gallery creates a 300x225 thumbnail in `DCIM/thumbs/` the first time it shows a photo.
+
+### Touch menu
+
+Tap **MENU** (top left) to open the settings menu. Tap an option to select it (orange = selected), then **DONE** to close. While the menu is open, touches never fire the shutter.
+
+- **Resolution:** 12MP 4056x3040 (default) or 3MP 2028x1520
+- **Format:** JPG, RAW (DNG only) or JPG+RAW (default)
+
+The current resolution and format are shown next to the MENU button. DNG-only shots are not listed in the web gallery.
 
 ### Using the web interface
 
@@ -116,7 +127,7 @@ To start the camera automatically at boot, install it as a systemd service (see 
    - **Analogue gain**: 0 = auto, up to 16x (step 0.1)
    - **Colour temperature**: 0 = auto, up to 8000 K (step 100)
 
-Settings are kept in memory only and reset to auto when the app restarts.
+Gain, colour temperature, resolution and format are saved to `camera_settings.json` in the project folder whenever they change, and restored at startup. Delete the file to go back to the defaults (auto, 12MP, JPG+RAW). Invalid values in it are ignored with a warning in the log. `scripts/dev.sh` never copies or cleans this file.
 
 **Security:** the web server listens on all interfaces (`0.0.0.0:5000`) with no authentication. Use it on a trusted network only.
 
@@ -126,7 +137,7 @@ Press `Ctrl+C`. When running as a service: `sudo systemctl stop pi-camera`.
 
 ## Configuration
 
-All static settings are in `settings.py`. Gain and colour temperature are runtime settings controlled from the web interface and are not in `settings.py`.
+All static settings are in `settings.py`. Gain, colour temperature, resolution and format are runtime settings (web interface / touch menu), saved in `camera_settings.json`; `settings.py` only defines their ranges and choices.
 
 ### GPIO
 ```python
@@ -137,8 +148,13 @@ GPIO_CONNECTED = False            # Set to True once the button is wired up
 
 ### Touchscreen
 ```python
-TOUCHSCREEN_ENABLED = True        # Touchscreen shutter (Pi only, requires evdev)
+TOUCHSCREEN_ENABLED = True        # Touchscreen shutter + menu (Pi only, requires evdev)
+TOUCH_SWAP_XY = False             # Calibration: map touch axes onto the screen as seen
+TOUCH_INVERT_X = False
+TOUCH_INVERT_Y = False
 ```
+
+Every tap is logged as `Touch raw=(…) screen=(x, y)` with x, y from 0 to 1 (0, 0 = top left as you see the screen). To calibrate, follow the log (`scripts/dev.sh --logs`) and tap the corners: if x and y are swapped, set `TOUCH_SWAP_XY`; if one runs the wrong way, set its `TOUCH_INVERT_*`.
 
 ### File paths and naming
 ```python
@@ -149,6 +165,7 @@ FILENAME_PREFIX = "IMG"
 FILENAME_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S_%f"   # microseconds: two shots never share a name
 JPG_EXTENSION = ".jpg"
 RAW_EXTENSION = ".dng"
+SETTINGS_FILE = PROJECT_ROOT / "camera_settings.json"   # saved runtime settings
 ```
 
 ### Thumbnails
@@ -162,8 +179,9 @@ THUMBNAIL_QUALITY = 85            # JPEG quality (1-100)
 ```python
 PREVIEW_WIDTH = 800               # Live preview
 PREVIEW_HEIGHT = 480
-CAPTURE_WIDTH = 4056              # Still capture
-CAPTURE_HEIGHT = 3040
+CAPTURE_RESOLUTIONS = ((4056, 3040), (2028, 1520))   # Touch menu choices; first = default
+CAPTURE_FORMATS = ("JPG", "RAW", "JPG+RAW")
+CAPTURE_FORMAT_DEFAULT = "JPG+RAW"
 PREVIEW_WINDOW_X = 0              # Preview window position
 PREVIEW_WINDOW_Y = 0
 ```
@@ -177,7 +195,7 @@ PREVIEW_ROTATE = True             # Rotate preview and HUD by 180 degrees (for a
 
 ### Timing
 ```python
-HUD_UPDATE_INTERVAL = 1.0         # HUD refresh interval; a shutter request wakes the loop immediately
+HUD_UPDATE_INTERVAL = 1.0         # HUD refresh interval; a shutter request or setting change wakes the loop immediately
 ```
 
 ### Runtime setting ranges
@@ -225,7 +243,7 @@ Override the defaults with environment variables: `PI_HOST` (SSH host/alias, def
 | `scripts/dev.sh --fg` | Copy, stop the service, run in your terminal. Ctrl+C stops the camera; the service restarts afterwards. |
 | `scripts/dev.sh --check` | Copy, restart, wait up to 20 s for the camera to initialize, print the log since restart. Exits 1 if the service is not running, the camera did not initialize, or the log contains errors. |
 | `scripts/dev.sh --logs` | Follow the log only. |
-| `scripts/dev.sh --clean` | List files on the Pi that are not in your working copy (e.g. deleted locally) and delete them after a y/N prompt. Never touches `DCIM/` or `.git/`. |
+| `scripts/dev.sh --clean` | List files on the Pi that are not in your working copy (e.g. deleted locally) and delete them after a y/N prompt. Never touches `DCIM/`, `.git/` or `camera_settings.json`. |
 | `scripts/dev.sh --test` | Copy, run the test suite (`tests/`) on the Pi. |
 | `scripts/dev.sh --shoot` | Take a photo via the web trigger, wait for JPG + DNG + thumbnail, copy JPG and thumbnail to `device-out/`. Exits 1 if a file is missing or the log has errors. |
 | `scripts/dev.sh --health` | Print service state, picamera2 version, OS, memory, disk, throttling, console blanking and groups. |
@@ -357,6 +375,7 @@ pi-camera/
 ├── touchscreen.py       # Touchscreen input via evdev (Pi only)
 ├── shared_state.py      # Thread-safe state shared between web server and camera
 ├── hud.py               # HUD overlay (PIL)
+├── menu.py              # Touch menu layout and tap handling
 ├── settings.py          # Static configuration
 ├── web/
 │   ├── app.py           # Flask app and API routes

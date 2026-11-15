@@ -33,6 +33,8 @@ FILENAME_PREFIX = "IMG"  # Prefix for saved image files
 FILENAME_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S_%f"  # %f (microseconds): two shots never share a name (R11)
 JPG_EXTENSION = ".jpg"  # JPEG file extension
 RAW_EXTENSION = ".dng"  # RAW (DNG) file extension
+EXIF_ARTIST = ""  # every photo's Artist tag; empty = not written. Visible to anyone you share photos with
+EXIF_COPYRIGHT = ""  # e.g. "(c) 2026 Your Name"; empty = not written. ASCII only (others become "?")
 SETTINGS_FILE = PROJECT_ROOT / "camera_settings.json"  # gain, WB, resolution, format; restored at startup
 
 # ============================================================================

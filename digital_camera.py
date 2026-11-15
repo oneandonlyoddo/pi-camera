@@ -81,12 +81,9 @@ class DigitalCamera:
         self.camera_state = camera_state
         self.photos_dir = Path(photos_dir)
         self.camera = None
-        self.running = False
         self.hud = HUD(PREVIEW_WIDTH, PREVIEW_HEIGHT)
-        self._last_settings = None  # (gain, colour_temp, preset) last sent to the camera
         self._preset = camera_state.preset  # preset whose tuning the open camera uses
         self._base_tuning = Picamera2.load_tuning_file(TUNING_FILE)  # read once; presets modify copies
-        self._last_saved = None  # CameraState.snapshot() last written to SETTINGS_FILE
 
         self.button = shutter_button(self.request_capture) if GPIO_CONNECTED else None
 
@@ -194,19 +191,16 @@ class DigitalCamera:
             dng.convert(raw, file=file)
 
     def run(self):
-        """Start the camera and enter main loop."""
+        """Start the camera and run the loop until Ctrl+C / SIGINT. cleanup() always runs; other errors propagate."""
         try:
             print("Starting Raspberry Pi Digital Camera...")
             print("Press Ctrl+C to exit")
-
             self.setup_camera()
-            self.running = True
-
-            # Start touchscreen monitoring if available
             if self.touchscreen:
                 self.touchscreen.start()
+            applied = None  # CameraState.snapshot() last sent to the camera and saved to SETTINGS_FILE
 
-            while self.running:
+            while True:
                 if self.camera_state.consume_shutter_request():
                     print("Capturing image...")
                     self.capture_photo()
@@ -218,35 +212,28 @@ class DigitalCamera:
                     print(f"Preset {self._preset or 'none'}: reopening the camera with its tuning")
                     self._close_camera()
                     self.setup_camera()
-                    self._last_settings = None  # a fresh camera needs every control again
-
-                settings_now = (self.camera_state.analogue_gain, self.camera_state.colour_temperature,
-                                self.camera_state.preset)
-                if settings_now != self._last_settings:
-                    try:
-                        self.camera.set_controls(controls_for(*settings_now, self._base_tuning))
-                        print(f"Applied gain/colour temperature/preset: {settings_now} (0 = auto)")
-                    except Exception as e:
-                        print(f"Warning: Failed to apply camera controls: {e}")
-                    self._last_settings = settings_now
+                    applied = None  # a fresh camera needs every control again
 
                 snapshot = self.camera_state.snapshot()
-                if snapshot != self._last_saved:
+                if snapshot != applied:
+                    gain, temp, preset = snapshot["analogue_gain"], snapshot["colour_temperature"], snapshot["preset"]
+                    try:
+                        self.camera.set_controls(controls_for(gain, temp, preset, self._base_tuning))
+                        print(f"Applied gain/colour temperature/preset: {gain}, {temp}, {preset!r} (0 = auto)")
+                    except Exception as e:
+                        print(f"Warning: Failed to apply camera controls: {e}")
                     try:
                         self.camera_state.save(SETTINGS_FILE)
                     except OSError as e:
                         print(f"Warning: could not save settings: {e}")
-                    self._last_saved = snapshot
+                    applied = snapshot
 
                 self.hud.update(self.camera, self.camera_state)
                 self.camera_state.wait(HUD_UPDATE_INTERVAL)
 
         except KeyboardInterrupt:
             print("\nShutting down camera...")
-            self.cleanup()
-
-        except Exception as e:
-            print(f"Error: {e}")
+        finally:
             self.cleanup()
 
     def _close_camera(self):
@@ -258,9 +245,6 @@ class DigitalCamera:
 
     def cleanup(self):
         """Clean up resources on exit."""
-        self.running = False
-
-        # Stop touchscreen monitoring
         if self.touchscreen:
             self.touchscreen.cleanup()
 

@@ -4,7 +4,7 @@ For values the user changes while the camera runs (like gain and colour temperat
 
 1. **Range:** define the valid range once as constants in `settings.py`, like `GAIN_MIN`/`GAIN_MAX` (`0` = auto). Web validation and the UI use these, not their own copies.
 2. **State:** add a lock-protected property to `CameraState` in `shared_state.py`, default = auto.
-3. **Apply (camera loop only, R2):** extend `controls_for()` in `digital_camera.py` (map auto to the matching `*Enable=True` control) and add the value to the `settings_now` tuple in `DigitalCamera.run()`; controls are sent only when the tuple changes (R8).
+3. **Apply (camera loop only, R2):** extend `controls_for()` in `digital_camera.py` (map auto to the matching `*Enable=True` control) and pass the value in `DigitalCamera.run()`; controls are sent (and the settings saved) only when `CameraState.snapshot()` changes (R8), so the value must be in `PERSISTED`.
    - Look up the libcamera control name and type for the installed picamera2 version (`scripts/dev.sh --health` prints it). Check with `camera.camera_controls` on the Pi if unsure.
    - Mind control interactions: e.g. manual `AnalogueGain`/`ExposureTime` both need `AeEnable=False`.
 4. **API (R7):** add the API key to `API_KEYS` in `web/app.py`; `GET`/`POST /api/settings` then read it and validate it with `is_valid()` (rejects bools, NaN, inf and out-of-range with `400`).

@@ -83,7 +83,10 @@ def max_scroll(state):
 
 
 def buttons(state):
-    """Every visible menu button, header first: (rect, label, value text, selected, (attr, value))."""
+    """Every visible menu button: (rect, label, value text, selected, (attr, value)).
+
+    The first is the one header button (DONE or BACK), the rest are the visible list rows.
+    """
     header = [(DONE_BUTTON, "DONE", "", True, ("menu_open", False))] if state.menu_page == "" else \
         [(BACK_BUTTON, "< BACK", "", False, ("menu_page", ""))]
     top = LIST_TOP - min(state.menu_scroll, max_scroll(state))
@@ -112,9 +115,9 @@ def handle_tap(state, x, y):
             _open(state)
             return False
         return True
-    for rect, _label, _value, _selected, (attr, value) in buttons(state):
-        # a row scrolled partly under the header is hit only below it
-        if _inside(rect, x, y) and (rect[3] < LIST_TOP or y >= LIST_TOP):
+    for i, (rect, _label, _value, _selected, (attr, value)) in enumerate(buttons(state)):
+        # a row scrolled partly under the header is hit only below it (i == 0 is the header)
+        if _inside(rect, x, y) and (i == 0 or y >= LIST_TOP):
             if attr == "menu_open":
                 state.menu_open = False
             elif attr == "menu_page":

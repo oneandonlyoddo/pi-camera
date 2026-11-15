@@ -110,9 +110,8 @@ class HUD:
         """The touch menu, from menu.buttons() (same rects as the hit test)."""
         width, height = self.preview_size
         draw.rectangle(menu.PANEL, fill=HUD_COLOR_DARK)
-        items = menu.buttons(state)
-        header = [b for b in items if b[0][3] < menu.LIST_TOP]
-        for rect, label, value, selected, _action in items[len(header):]:  # list rows, left-aligned
+        header, *rows = menu.buttons(state)
+        for rect, label, value, selected, _action in rows:  # left-aligned
             fill, text = (HUD_COLOR_ACCENT, HUD_COLOR_DARK) if selected else (HUD_COLOR_DARK, HUD_COLOR_LIGHT)
             draw.rounded_rectangle(rect, radius=10, fill=fill, outline=None if selected else HUD_COLOR_GREY, width=2)
             mid = (rect[1] + rect[3]) / 2
@@ -124,11 +123,11 @@ class HUD:
         draw.rectangle((0, 0, width, menu.LIST_TOP - 1), fill=HUD_COLOR_DARK)
         title_x = menu.BACK_BUTTON[2] + 16 if state.menu_page else menu.PANEL[0] + 16
         draw.text((title_x, menu.LIST_TOP / 2 - 4), menu.title(state), font=self.font, fill=HUD_COLOR_LIGHT, anchor="lm")
-        for rect, label, _value, selected, _action in header:
-            if selected:
-                self._button(draw, rect, label, HUD_COLOR_ACCENT, HUD_COLOR_DARK)
-            else:
-                self._button(draw, rect, label, HUD_COLOR_DARK, HUD_COLOR_LIGHT, outline=HUD_COLOR_GREY)
+        rect, label, _value, selected, _action = header
+        if selected:
+            self._button(draw, rect, label, HUD_COLOR_ACCENT, HUD_COLOR_DARK)
+        else:
+            self._button(draw, rect, label, HUD_COLOR_DARK, HUD_COLOR_LIGHT, outline=HUD_COLOR_GREY)
 
         # Scroll bar in the right margin, only when the list is longer than the screen
         limit = menu.max_scroll(state)

@@ -28,4 +28,4 @@ Reference images in this folder:
 
 ## Open questions
 - how to get battery status?
-- ~~neat way to access a settings menu~~: MENU button bottom right opens a full-screen touch menu (`menu.py`); resolution, format and preset
+- ~~neat way to access a settings menu~~: MENU button bottom right opens a full-screen touch menu (`menu.py`); resolution, format, preset and white balance; DONE top right

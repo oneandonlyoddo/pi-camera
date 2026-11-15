@@ -111,3 +111,13 @@ def test_settings_rejects_out_of_range(client, state, payload):
     assert res.status_code == 400
     assert state.analogue_gain == 0.0
     assert state.colour_temperature == 0
+
+
+def test_wb_preset_buttons_render_and_are_valid(client):
+    from settings import WB_PRESETS
+    from shared_state import is_valid
+
+    html = client.get("/").get_data(as_text=True)
+    for name, kelvin in WB_PRESETS.items():
+        assert f'data-kelvin="{kelvin}">{name}<' in html
+        assert is_valid("colour_temperature", kelvin)

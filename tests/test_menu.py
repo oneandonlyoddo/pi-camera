@@ -57,7 +57,7 @@ def test_buttons_do_not_overlap_and_fit_the_screen(state):
 def test_one_option_selected_per_row(state):
     selected = [action for _r, _l, sel, action in menu.buttons(state) if sel and action[0] != "menu_open"]
     assert selected == [("capture_resolution", CAPTURE_RESOLUTIONS[0]), ("capture_format", CAPTURE_FORMAT_DEFAULT),
-                        ("preset", "")]
+                        ("preset", ""), ("colour_temperature", 0)]
 
 
 def test_resolution_label():
@@ -146,3 +146,22 @@ def test_setting_change_wakes_loop(state, attr, value):
     state.wait(2)
     assert time.monotonic() - t0 < 1
 
+
+def test_wb_row_sets_colour_temperature(state):
+    from settings import WB_PRESETS
+
+    state.menu_open = True
+    menu.handle_tap(state, *centre(button_for(state, "colour_temperature", WB_PRESETS["SUNNY"])))
+    assert state.colour_temperature == WB_PRESETS["SUNNY"]
+    state.colour_temperature = 4200  # from the web slider: no WB button selected
+    assert not any(sel for _r, _l, sel, (attr, _v) in menu.buttons(state) if attr == "colour_temperature")
+
+
+def test_wb_labels_fit_their_buttons(state):
+    from PIL import ImageFont
+
+    from settings import HUD_FONT_PATH, HUD_FONT_SIZE
+
+    font = ImageFont.truetype(str(HUD_FONT_PATH), HUD_FONT_SIZE)
+    for rect, label, _s, _a in menu.buttons(state):
+        assert font.getlength(label) < rect[2] - rect[0] - 4, label

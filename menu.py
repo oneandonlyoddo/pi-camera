@@ -4,16 +4,17 @@ Coordinates are HUD pixels as the user sees the screen (PREVIEW_WIDTH x PREVIEW_
 before the PREVIEW_ROTATE flip). hud.py draws from the same layout, so what you see is what you hit.
 """
 import presets
-from settings import CAPTURE_FORMATS, CAPTURE_RESOLUTIONS, PREVIEW_HEIGHT, PREVIEW_WIDTH
+from settings import CAPTURE_FORMATS, CAPTURE_RESOLUTIONS, PREVIEW_HEIGHT, PREVIEW_WIDTH, WB_PRESETS
 
 MENU_BUTTON = (684, 434, 794, 474)  # drawn bottom right, centred in the bottom bar (HUD_BAR_HEIGHT)
 MENU_HIT = (620, 380, 800, 480)  # larger than drawn: a finger on a 3.5" resistive screen
 PANEL = (0, 0, PREVIEW_WIDTH, PREVIEW_HEIGHT)  # full screen: solid colours, no preview slivers beside the bars
-ROW_RESOLUTION_Y = 76  # top of the option buttons; the label sits above
-ROW_FORMAT_Y = 182
-ROW_PRESET_Y = 288
-ROW_HEIGHT = 72
-DONE_BUTTON = (600, 384, 784, 460)  # right edge aligned with the option rows
+ROW_RESOLUTION_Y = 94  # top of the option buttons; the label sits above
+ROW_FORMAT_Y = 196
+ROW_PRESET_Y = 298
+ROW_WB_Y = 400
+ROW_HEIGHT = 64
+DONE_BUTTON = (600, 8, 784, 56)  # top right, beside the SETTINGS title; right edge aligned with the option rows
 
 
 def resolution_label(size):
@@ -40,6 +41,8 @@ def buttons(state):
         + _row(ROW_FORMAT_Y, "capture_format", CAPTURE_FORMATS, CAPTURE_FORMATS, state.capture_format)
         # shortcut: one row of buttons; past ~4 presets the labels stop fitting, page the row then
         + _row(ROW_PRESET_Y, "preset", ("", *presets.PRESETS), ("NONE", *presets.PRESETS), state.preset)
+        # a slider value from the web that is no WB preset selects nothing
+        + _row(ROW_WB_Y, "colour_temperature", tuple(WB_PRESETS.values()), tuple(WB_PRESETS), state.colour_temperature)
         + [(DONE_BUTTON, "DONE", True, ("menu_open", False))]
     )
 

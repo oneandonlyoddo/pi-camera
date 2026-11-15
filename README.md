@@ -17,7 +17,8 @@ The web server and the camera loop communicate through a lock-protected `CameraS
 ### Camera
 - 📸 **Hardware shutter button** via GPIO (enable with `GPIO_CONNECTED = True`)
 - 👆 **Touchscreen trigger**: touch anywhere outside the MENU button to capture (optional, Pi only)
-- 📋 **Touch menu**: MENU button (bottom right) to choose capture resolution, format and preset
+- 📋 **Touch menu**: MENU button (bottom right) to choose capture resolution, format, preset and white balance (DONE top right)
+- ☀️ **White balance presets**: AUTO, INDOOR 3000K, FLUOR 4000K, SUNNY 5500K, CLOUDY 6500K, SHADE 7500K (fixed Kelvin, `WB_PRESETS` in `settings.py`); in the touch menu and the web Settings tab
 - 🎨 **Presets / film simulation**: Fuji-style recipes from `presets.json`, applied to the live preview and the JPG (see [Presets](#presets))
 - 🖥️ **Fullscreen preview** on the connected display (DRM preview, 800x480)
 - 📷 **Capture resolution**: 4056x3040 (12 MP) or 2028x1520 (3 MP), both the full field of view
@@ -144,6 +145,7 @@ The current resolution and format are shown top left. DNG-only shots are not lis
    - **Shutter button**: capture remotely
    - **Analogue gain**: 0 = auto, up to 16x (step 0.1)
    - **Colour temperature**: 0 = auto, up to 8000 K (step 100)
+   - **White balance presets**: buttons under the slider (AUTO, INDOOR, FLUOR, SUNNY, CLOUDY, SHADE) set it to a fixed Kelvin value
 
 Gain, colour temperature, resolution, format and preset are saved to `camera_settings.json` in the project folder whenever they change, and restored at startup. Delete the file to go back to the defaults (auto, 12MP, JPG+RAW, no preset). Invalid values in it are ignored with a warning in the log. `scripts/dev.sh` never copies or cleans this file.
 
@@ -167,7 +169,7 @@ Presets are Fuji-style film simulation recipes, defined in `presets.json` (proje
 | `mono` | true/false | black and white (overrides `color`) |
 | `highlight` / `shadow` | -4..4 | tone curve: + brightens highlights / darkens shadows |
 | `sharpness` | -4..4 | 0.25 per step |
-| `wb` | 2000..8000 | fixed white balance in Kelvin (like "Daylight" / "5500K" in a recipe); missing = auto. A manual WB from the web page overrides it |
+| `wb` | 2000..8000 or a name | fixed white balance in Kelvin, or a WB preset name (`"sunny"`, `"cloudy"`, ... case-insensitive); missing = auto. A manual WB from the web page overrides it |
 | `wb_red` / `wb_blue` | -9..9 | shift on top of auto WB or the preset's `wb`, 5% gain per step (not on top of a web manual WB) |
 | `exposure` | -3..3 | exposure compensation in EV; only with auto gain |
 

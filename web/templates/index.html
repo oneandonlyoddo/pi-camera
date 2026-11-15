@@ -57,6 +57,11 @@
                         <span>Auto</span>
                         <span>{{ temp_max }}K</span>
                     </div>
+                    <div class="wb-presets">
+                        {% for name, kelvin in wb_presets.items() %}
+                        <button class="wb-chip" data-kelvin="{{ kelvin }}">{{ name }}</button>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </main>
@@ -147,7 +152,15 @@
             tempSlider.addEventListener('input', (e) => {
                 const val = e.target.value;
                 document.getElementById('temp-val').innerText = val == 0 ? 'Auto' : val + 'K';
+                markWbPreset(val);
             });
+
+            // WB presets: shortcuts that move the slider
+            document.querySelectorAll('.wb-chip').forEach(chip => chip.addEventListener('click', () => {
+                tempSlider.value = chip.dataset.kelvin;
+                tempSlider.dispatchEvent(new Event('input'));
+                updateSettings({ color_temp: tempSlider.value });
+            }));
 
             tempSlider.addEventListener('change', (e) => {
                 updateSettings({ color_temp: snapToMin(e.target, {{ temp_min }}) });
@@ -163,8 +176,13 @@
 
                         tempSlider.value = data.color_temp;
                         document.getElementById('temp-val').innerText = data.color_temp == 0 ? 'Auto' : data.color_temp + 'K';
+                        markWbPreset(data.color_temp);
                     }
                 });
+        }
+
+        function markWbPreset(kelvin) {
+            document.querySelectorAll('.wb-chip').forEach(chip => chip.classList.toggle('active', chip.dataset.kelvin == kelvin));
         }
 
         // 0 = auto; the camera rejects values between 0 and its minimum, so jump to the minimum

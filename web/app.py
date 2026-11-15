@@ -10,6 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from settings import (  # noqa: E402 (needs the sys.path line above)
     COLOUR_TEMP_MAX,
     COLOUR_TEMP_MIN,
+    WB_PRESETS,
     GAIN_MAX,
     GAIN_MIN,
     JPG_EXTENSION,
@@ -94,7 +95,8 @@ if not thumbnails_path.exists():
 def index():
     """Render the main gallery page."""
     return render_template(
-        'index.html', gain_min=GAIN_MIN, gain_max=GAIN_MAX, temp_min=COLOUR_TEMP_MIN, temp_max=COLOUR_TEMP_MAX
+        'index.html', gain_min=GAIN_MIN, gain_max=GAIN_MAX, temp_min=COLOUR_TEMP_MIN, temp_max=COLOUR_TEMP_MAX,
+        wb_presets=WB_PRESETS,
     )
 
 @app.route('/api/photos')

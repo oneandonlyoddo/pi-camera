@@ -75,6 +75,9 @@ GAIN_MIN = 1.0  # Analogue gain range of the HQ camera
 GAIN_MAX = 16.0
 COLOUR_TEMP_MIN = 2000  # Colour temperature range in Kelvin
 COLOUR_TEMP_MAX = 8000
+# Named WB shortcuts for the colour temperature (touch menu, web, preset "wb"); fixed Kelvin like other cameras.
+# Names must fit a menu button, max ~7 characters (tests/test_menu.py checks). 0 = auto.
+WB_PRESETS = {"AUTO": 0, "INDOOR": 3000, "FLUOR": 4000, "SUNNY": 5500, "CLOUDY": 6500, "SHADE": 7500}
 
 # ============================================================================
 # PRESETS (film simulation recipes; chosen in the touch menu, saved in SETTINGS_FILE)

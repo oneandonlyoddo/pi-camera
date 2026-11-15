@@ -114,6 +114,7 @@ class HUD:
         draw.text((x, menu.ROW_RESOLUTION_Y - 34), "RESOLUTION", font=self.font, fill=HUD_COLOR_GREY)
         draw.text((x, menu.ROW_FORMAT_Y - 34), "FORMAT", font=self.font, fill=HUD_COLOR_GREY)
         draw.text((x, menu.ROW_PRESET_Y - 34), "PRESET", font=self.font, fill=HUD_COLOR_GREY)
+        draw.text((x, menu.ROW_WB_Y - 34), "WHITE BALANCE", font=self.font, fill=HUD_COLOR_GREY)
         for rect, label, selected, _action in menu.buttons(state):
             if selected:
                 self._button(draw, rect, label, HUD_COLOR_ACCENT, HUD_COLOR_DARK)

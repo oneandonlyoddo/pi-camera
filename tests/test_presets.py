@@ -29,7 +29,7 @@ def test_load_skips_invalid(tmp_path):
     path.write_text(json.dumps({
         "Ok": {"color": 2, "mono": False, "wb": 5500},
         "BadKey": {"grain": 1}, "OutOfRange": {"highlight": 5}, "Bool": {"color": True},
-        "NotMono": {"mono": 1}, "WbLow": {"wb": 1000}, "WbZero": {"wb": 0}, "A very long preset name": {}, "NaN": {"shadow": float("nan")},
+        "NotMono": {"mono": 1}, "WbLow": {"wb": 1000}, "WbZero": {"wb": 0}, "WbName": {"wb": "sunset"}, "A very long preset name": {}, "NaN": {"shadow": float("nan")},
     }))
     assert presets.load(path) == {"Ok": {"color": 2, "mono": False, "wb": 5500}}
 
@@ -124,3 +124,8 @@ def test_colour_gains_interpolate_clamp_and_shift():
     shifted = presets.colour_gains(tuning, {"wb": 4500, "wb_red": 2, "wb_blue": -4})
     assert shifted[0] > plain[0] and shifted[1] < plain[1]
 
+
+def test_wb_by_name(tmp_path):
+    path = tmp_path / "p.json"
+    path.write_text(json.dumps({"Day": {"wb": "sunny"}, "Auto": {"wb": "Auto", "color": 1}}))
+    assert presets.load(path) == {"Day": {"wb": 5500}, "Auto": {"color": 1}}

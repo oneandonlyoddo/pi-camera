@@ -16,6 +16,7 @@ Status: `done` · `wip` · `planned` · `idea` · `rejected`. A rejected feature
 | Web gallery refresh button | done | round button next to the headline reloads the photo list (no-store fetch for the iOS home-screen app). Tap still needs a person |
 | EXIF in JPG + DNG | done | only values measured at capture or reported by the sensor; no aperture/lens (manual lens, unknown). Artist/Copyright from `settings.py`. Time zone, exposure/WB mode, pixel size: JPG only (pidng lacks the tags) |
 | Presets / film simulation (Fuji-style recipes) | wip | 2026-11-15: verified on device (live switch, shots: Acros mono, Portra warmer R/B 1.41→1.56). Menu row taps + HUD name still need a person; step sizes still need tuning by eye. `presets.json`; colour, mono, highlight, shadow, sharpness, fixed WB (K) + WB shift, exposure comp. Applied to preview + JPG, not DNG. Switching reopens the camera with a modified tuning file. Not yet: grain, halation, colour matrix (film colour, Acros+R/G), Colour Chrome, clarity, NR. Reference recipes + sample shots: `docs/presets/` |
+| White balance presets | wip | AUTO / INDOOR 3000K / FLUOR 4000K / SUNNY 5500K / CLOUDY 6500K / SHADE 7500K: fixed Kelvin shortcuts for the colour temperature (not libcamera's range-limited `AwbMode`). Touch menu row, web buttons, preset `wb` by name. 2026-11-15: menu render, web page and API checked on device; taps and how the web buttons look need a person |
 | <!-- next feature --> | | |
 
 ## Rejected

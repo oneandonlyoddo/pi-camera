@@ -17,6 +17,7 @@ from settings import (
     PRESET_TONE_STEP,
     PRESET_WB_STEP,
     PRESETS_FILE,
+    WB_PRESETS,
 )
 
 # key: (low, high); "mono" is a bool
@@ -31,7 +32,10 @@ def _valid(name, preset):
     if not isinstance(name, str) or not 0 < len(name) <= PRESET_NAME_MAX or not isinstance(preset, dict):
         return False
     for key, value in preset.items():
-        if key == "mono":
+        if key == "wb" and isinstance(value, str):
+            if value.upper() not in WB_PRESETS:
+                return False
+        elif key == "mono":
             if not isinstance(value, bool):
                 return False
         elif key not in RANGES or isinstance(value, bool) or not isinstance(value, (int, float)):
@@ -56,6 +60,10 @@ def load(path):
     presets = {}
     for name, preset in data.items():
         if _valid(name, preset):
+            if isinstance(preset.get("wb"), str):  # a WB_PRESETS name -> Kelvin; "auto" = no fixed WB
+                preset = {**preset, "wb": WB_PRESETS[preset["wb"].upper()]}
+                if not preset["wb"]:
+                    del preset["wb"]
             presets[name] = preset
         else:
             print(f"Warning: skipping invalid preset {name!r} in {path.name} (name max {PRESET_NAME_MAX} chars)")

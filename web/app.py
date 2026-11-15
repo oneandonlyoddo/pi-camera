@@ -1,6 +1,7 @@
 
 import os
 import sys
+import threading
 from pathlib import Path
 from flask import Flask, render_template, send_from_directory, jsonify, request
 from PIL import Image
@@ -29,6 +30,7 @@ from settings import (  # noqa: E402 (needs the sys.path line above)
 
 app = Flask(__name__)
 camera_state = None  # Global to hold the shared state
+_thumbnail_lock = threading.Lock()
 
 def init_app(shared_state):
     """
@@ -52,31 +54,27 @@ def generate_thumbnail_if_missing(filename):
         raise FileNotFoundError(filename)
     thumb_path = thumbnails_path / filename
 
-    # If thumbnail already exists, return it
-    if thumb_path.exists():
-        return thumb_path
+    # One at a time: a parallel request must never see a half-written thumbnail (it is cached for a year)
+    with _thumbnail_lock:
+        if thumb_path.exists():
+            return thumb_path
 
-    # Generate thumbnail from original image
-    original_path = photos_path / filename
-    if not original_path.exists():
-        raise FileNotFoundError(f"Original image not found: {filename}")
+        original_path = photos_path / filename
+        if not original_path.exists():
+            raise FileNotFoundError(f"Original image not found: {filename}")
 
-    try:
-        # Open the original image
-        img = Image.open(original_path)
+        try:
+            with Image.open(original_path) as img:
+                img.thumbnail((THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT), Image.Resampling.LANCZOS)  # keeps aspect ratio
+                tmp = thumb_path.with_suffix(".tmp")
+                img.save(tmp, "JPEG", quality=THUMBNAIL_QUALITY)
+            os.replace(tmp, thumb_path)  # a crash mid-save never leaves a broken thumbnail
+            print(f"Generated thumbnail on-demand: {thumb_path}")
+            return thumb_path
 
-        # Create thumbnail (maintains aspect ratio)
-        img.thumbnail((THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT), Image.Resampling.LANCZOS)
-
-        # Save thumbnail
-        img.save(thumb_path, "JPEG", quality=THUMBNAIL_QUALITY)
-
-        print(f"Generated thumbnail on-demand: {thumb_path}")
-        return thumb_path
-
-    except Exception as e:
-        print(f"Error generating thumbnail for {filename}: {e}")
-        raise
+        except Exception as e:
+            print(f"Error generating thumbnail for {filename}: {e}")
+            raise
 
 # Absolute paths from settings.py (R4); module-level so tests can point them elsewhere
 photos_path = PHOTOS_DIR

@@ -44,6 +44,7 @@ def test_thumbnail_generated_on_demand(client, dcim, make_jpg):
     assert res.status_code == 200
     thumb = dcim / "thumbs" / "IMG_a.jpg"
     assert thumb.exists()
+    assert not list(thumb.parent.glob("*.tmp"))  # written to a temp file, then renamed into place
     with Image.open(thumb) as img:
         assert img.width <= 300 and img.height <= 225
 

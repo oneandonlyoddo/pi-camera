@@ -5,16 +5,11 @@ from pathlib import Path
 from flask import Flask, render_template, send_from_directory, jsonify, request
 from PIL import Image
 
-import presets
-from menu import resolution_label, value_label
+import menu
 from shared_state import is_valid
 from settings import (
-    CAPTURE_FORMATS,
-    CAPTURE_RESOLUTIONS,
     COLOUR_TEMP_MAX,
-    GAIN_STEPS,
     COLOUR_TEMP_MIN,
-    WB_PRESETS,
     GAIN_MAX,
     GAIN_MIN,
     JPG_EXTENSION,
@@ -78,19 +73,20 @@ photos_path = PHOTOS_DIR
 thumbnails_path = THUMBNAILS_DIR
 thumbnails_path.mkdir(parents=True, exist_ok=True)  # DCIM/ too
 
+# API key -> CameraState attribute. The API names predate the state names; keep both stable.
+API_KEYS = {"gain": "analogue_gain", "color_temp": "colour_temperature", "resolution": "capture_resolution",
+            "format": "capture_format", "preset": "preset"}
+_API_KEY = {attr: key for key, attr in API_KEYS.items()}
+
+
 @app.route('/')
 def index():
     """Render the main gallery page."""
     return render_template(
         'index.html', gain_min=GAIN_MIN, gain_max=GAIN_MAX, temp_min=COLOUR_TEMP_MIN, temp_max=COLOUR_TEMP_MAX,
-        wb_presets=WB_PRESETS,
-        # chip rows: (API key, [(value, label)]), labels as on the Pi menu
-        choices=[
-            ("resolution", [(list(r), f"{resolution_label(r)} {r[0]}x{r[1]}") for r in CAPTURE_RESOLUTIONS]),
-            ("format", [(f, f) for f in CAPTURE_FORMATS]),
-            ("preset", [(p, value_label("preset", p)) for p in ("", *presets.PRESETS)]),
-        ],
-        gain_steps=[(g, value_label("analogue_gain", g)) for g in GAIN_STEPS],
+        # chip rows in touch-menu order: (title, API key, [(value, label)]), labels as on the Pi menu
+        choices=[(title, _API_KEY[attr], [(v, menu.option_label(attr, v)) for v in values])
+                 for title, attr, values in menu.categories()],
     )
 
 @app.route('/api/photos')
@@ -146,32 +142,8 @@ def trigger_shutter():
     camera_state.shutter_requested = True
     return jsonify({"status": "ok", "message": "Shutter requested"})
 
-def parse_setting(data, key, low, high):
-    """`data[key]` as a float that is 0 (auto) or within [low, high]; None if absent.
-
-    Raises ValueError/TypeError for anything else, including booleans, NaN and inf (R7).
-    """
-    if key not in data:
-        return None
-    value = data[key]
-    if isinstance(value, bool):
-        raise ValueError(f"{key} must be a number")
-    value = float(value)
-    if not (value == 0 or low <= value <= high):  # NaN fails both comparisons
-        raise ValueError(f"{key} must be 0 (auto) or between {low} and {high}")
-    return value
-
-CHOICES = {"resolution": "capture_resolution", "format": "capture_format", "preset": "preset"}  # API key -> state
-
-
 def settings_json():
-    return {
-        "gain": camera_state.analogue_gain,
-        "color_temp": camera_state.colour_temperature,
-        "resolution": list(camera_state.capture_resolution),
-        "format": camera_state.capture_format,
-        "preset": camera_state.preset,
-    }
+    return {key: getattr(camera_state, attr) for key, attr in API_KEYS.items()}  # tuples become JSON lists
 
 
 @app.route('/api/settings', methods=['POST'])
@@ -181,25 +153,20 @@ def update_settings():
     if not data or not isinstance(data, dict):
         return jsonify({"status": "error", "message": "No data provided"}), 400
 
-    try:
-        gain = parse_setting(data, 'gain', GAIN_MIN, GAIN_MAX)
-        temp = parse_setting(data, 'color_temp', COLOUR_TEMP_MIN, COLOUR_TEMP_MAX)
-    except (TypeError, ValueError) as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
-    choices = {}
-    for key, attr in CHOICES.items():
+    updates = {}
+    for key, attr in API_KEYS.items():
         if key in data:
             value = tuple(data[key]) if isinstance(data[key], list) else data[key]  # JSON has no tuples
-            if not is_valid(attr, value):
+            if not is_valid(attr, value):  # rejects bools, NaN, inf, out of range (R7)
                 return jsonify({"status": "error", "message": f"invalid {key}: {data[key]!r}"}), 400
-            choices[attr] = value
+            updates[attr] = value
+    if "analogue_gain" in updates:
+        updates["analogue_gain"] = float(updates["analogue_gain"])
+    if "colour_temperature" in updates:
+        updates["colour_temperature"] = int(updates["colour_temperature"])
 
     # Only store once every value is valid, so a bad request changes nothing
-    if gain is not None:
-        camera_state.analogue_gain = gain
-    if temp is not None:
-        camera_state.colour_temperature = int(temp)
-    for attr, value in choices.items():
+    for attr, value in updates.items():
         setattr(camera_state, attr, value)
 
     return jsonify({"status": "ok", **settings_json()})

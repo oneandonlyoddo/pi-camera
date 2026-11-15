@@ -152,12 +152,12 @@ def test_settings_page_renders_every_menu_option(client):
     import re
 
     import menu
+    import web.app as webapp
 
     page = client.get("/").get_data(as_text=True)
     chips = {(key, json.dumps(json.loads(html_lib.unescape(value))))  # normalised JSON: lists don't hash
              for key, value in re.findall(r'data-key="(\w+)" data-value="([^"]*)"', page)}
-    api_key = {"capture_resolution": "resolution", "capture_format": "format", "preset": "preset",
-               "colour_temperature": "color_temp", "analogue_gain": "gain"}
+    api_key = {attr: key for key, attr in webapp.API_KEYS.items()}
     for _t, attr, values in menu.categories():
         for v in values:
             key, value = api_key[attr], list(v) if isinstance(v, tuple) else v

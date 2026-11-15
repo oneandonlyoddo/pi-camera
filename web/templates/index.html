@@ -42,9 +42,25 @@
                 </div>
 
                 <!-- Same settings and order as the touch menu on the Pi (menu.categories) -->
-                {% for key, options in choices %}
+                {% for title, key, options in choices %}
                 <div class="control-group">
-                    <label>{{ key|capitalize }}</label>
+                    {% if key == 'color_temp' %}
+                    <label for="temp-slider">{{ title|title }} <span id="temp-val">Auto</span></label>
+                    <input type="range" id="temp-slider" min="0" max="{{ temp_max }}" step="100" value="0">
+                    <div class="slider-labels">
+                        <span>Auto</span>
+                        <span>{{ temp_max }}K</span>
+                    </div>
+                    {% elif key == 'gain' %}
+                    <label for="gain-slider">{{ title|title }} <span id="gain-val">Auto</span></label>
+                    <input type="range" id="gain-slider" min="0" max="{{ gain_max }}" step="0.1" value="0">
+                    <div class="slider-labels">
+                        <span>Auto</span>
+                        <span>{{ gain_max|int }}x</span>
+                    </div>
+                    {% else %}
+                    <label>{{ title|title }}</label>
+                    {% endif %}
                     <div class="chips">
                         {% for value, label in options %}
                         <button class="chip" data-key="{{ key }}" data-value="{{ value|tojson|forceescape }}">{{ label }}</button>
@@ -52,34 +68,6 @@
                     </div>
                 </div>
                 {% endfor %}
-
-                <div class="control-group">
-                    <label for="temp-slider">White Balance <span id="temp-val">Auto</span></label>
-                    <input type="range" id="temp-slider" min="0" max="{{ temp_max }}" step="100" value="0">
-                    <div class="slider-labels">
-                        <span>Auto</span>
-                        <span>{{ temp_max }}K</span>
-                    </div>
-                    <div class="chips">
-                        {% for name, kelvin in wb_presets.items() %}
-                        <button class="chip" data-key="color_temp" data-value="{{ kelvin }}">{{ name }}</button>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label for="gain-slider">Gain <span id="gain-val">Auto</span></label>
-                    <input type="range" id="gain-slider" min="0" max="{{ gain_max }}" step="0.1" value="0">
-                    <div class="slider-labels">
-                        <span>Auto</span>
-                        <span>{{ gain_max|int }}x</span>
-                    </div>
-                    <div class="chips">
-                        {% for value, label in gain_steps %}
-                        <button class="chip" data-key="gain" data-value="{{ value }}">{{ label }}</button>
-                        {% endfor %}
-                    </div>
-                </div>
             </div>
         </main>
     </div>

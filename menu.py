@@ -57,7 +57,8 @@ def value_label(attr, value):
     return value
 
 
-def _option_label(attr, value):
+def option_label(attr, value):
+    """Text for one option on an option page (and a web chip): the resolution also shows its size."""
     return f"{resolution_label(value)} {value[0]}x{value[1]}" if attr == "capture_resolution" else value_label(attr, value)
 
 
@@ -72,7 +73,7 @@ def _items(state):
     for _t, attr, values in categories():
         if attr == page:
             current = getattr(state, attr)
-            return [(_option_label(attr, v), "", v == current, (attr, v)) for v in values]
+            return [(option_label(attr, v), "", v == current, (attr, v)) for v in values]
     return [(t, value_label(attr, getattr(state, attr)), False, ("menu_page", attr)) for t, attr, _v in categories()]
 
 

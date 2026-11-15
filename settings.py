@@ -17,7 +17,12 @@ GPIO_CONNECTED = False
 # ============================================================================
 # TOUCHSCREEN CONFIGURATION
 # ============================================================================
-TOUCHSCREEN_ENABLED = True  # Enable touchscreen shutter trigger (requires evdev)
+TOUCHSCREEN_ENABLED = True  # Enable touchscreen shutter + menu (requires evdev)
+# Calibration: map the raw touch axes onto the screen as the user sees it (docs/SPECS.md).
+# Every tap is logged with its screen position; tap the corners to check.
+TOUCH_SWAP_XY = False
+TOUCH_INVERT_X = True
+TOUCH_INVERT_Y = True
 
 # ============================================================================
 # FILE PATHS
@@ -28,6 +33,7 @@ FILENAME_PREFIX = "IMG"  # Prefix for saved image files
 FILENAME_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S_%f"  # %f (microseconds): two shots never share a name (R11)
 JPG_EXTENSION = ".jpg"  # JPEG file extension
 RAW_EXTENSION = ".dng"  # RAW (DNG) file extension
+SETTINGS_FILE = PROJECT_ROOT / "camera_settings.json"  # gain, WB, resolution, format; restored at startup
 
 # ============================================================================
 # THUMBNAIL SETTINGS
@@ -43,9 +49,11 @@ THUMBNAIL_QUALITY = 85  # JPEG quality for thumbnails (1-100)
 PREVIEW_WIDTH = 800
 PREVIEW_HEIGHT = 480
 
-# Capture resolution (for high-res still images)
-CAPTURE_WIDTH = 4056
-CAPTURE_HEIGHT = 3040
+# Capture resolutions offered in the touch menu; the first is the default.
+# Only IMX477 sensor modes with the full field of view, so the DNG matches the JPG.
+CAPTURE_RESOLUTIONS = ((4056, 3040), (2028, 1520))
+CAPTURE_FORMATS = ("JPG", "RAW", "JPG+RAW")  # RAW = DNG
+CAPTURE_FORMAT_DEFAULT = "JPG+RAW"
 
 # Fullscreen preview window size
 PREVIEW_WINDOW_X = 0
@@ -56,10 +64,10 @@ PREVIEW_ROTATE = True  # rotate preview + HUD 180° for the upside-down display;
 # ============================================================================
 # CAMERA TIMING
 # ============================================================================
-HUD_UPDATE_INTERVAL = 1.0  # Seconds between HUD updates (a shutter request wakes the loop early)
+HUD_UPDATE_INTERVAL = 1.0  # Seconds between HUD updates (a shutter request or setting change wakes the loop early)
 
 # ============================================================================
-# RUNTIME SETTINGS (set from the web interface; 0 = auto)
+# RUNTIME SETTINGS (set from the web interface; 0 = auto; saved in SETTINGS_FILE)
 # ============================================================================
 GAIN_MIN = 1.0  # Analogue gain range of the HQ camera
 GAIN_MAX = 16.0
@@ -83,6 +91,12 @@ HUD_PADDING_H = 6
 # HUD colors (RGBA format: Red, Green, Blue, Alpha
 HUD_COLOR_WHITE = (255, 255, 255, 255)  # White text for time
 HUD_COLOR_BLACK = (0, 0, 0, 255)  # Black text for settings
+# Touch menu, from docs/design/colour_scheme.jpg
+HUD_COLOR_ACCENT = (255, 77, 0, 255)  # FF4D00: MENU button, selected option
+HUD_COLOR_PANEL = (17, 17, 17, 235)  # 111111: menu background
+HUD_COLOR_MUTED = (142, 142, 142, 255)  # 8E8E8E: labels
+HUD_COLOR_BUTTON = (50, 50, 50, 255)  # unselected option
+HUD_COLOR_TEXT = (242, 242, 242, 255)  # F2F2F2
 
 # HUD Background Image
 # Path to a transparent PNG to use as the HUD background (optional)

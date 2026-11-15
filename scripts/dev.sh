@@ -55,10 +55,10 @@ sync_files() {
   local_files | tar --null -cf - -T - | remote "tar -xf - -C '$PI_DIR'"
 }
 
-# Regular files on the Pi that are not in local_files. Never lists DCIM/, .git/ or __pycache__/.
+# Regular files on the Pi that are not in local_files. Never lists DCIM/, .git/, camera_settings.json or __pycache__/.
 stale_files() {
   local_files | tr '\0' '\n' | remote "cd '$PI_DIR' && l=\$(mktemp) && sort > \"\$l\" &&
-    find . -type f ! -path './DCIM/*' ! -path './.git/*' ! -path '*/__pycache__/*' \
+    find . -type f ! -path './DCIM/*' ! -path './.git/*' ! -path './camera_settings.json' ! -path '*/__pycache__/*' \
       | sed 's|^\./||' | sort | comm -23 - \"\$l\"; rm -f \"\$l\""
 }
 

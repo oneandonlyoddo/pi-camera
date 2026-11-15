@@ -2,9 +2,15 @@ import datetime
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
+import menu
 from settings import (
     HUD_BACKGROUND_IMAGE_PATH,
+    HUD_COLOR_ACCENT,
     HUD_COLOR_BLACK,
+    HUD_COLOR_BUTTON,
+    HUD_COLOR_MUTED,
+    HUD_COLOR_PANEL,
+    HUD_COLOR_TEXT,
     HUD_COLOR_WHITE,
     HUD_FONT_PATH,
     HUD_FONT_SIZE,
@@ -53,13 +59,15 @@ class HUD:
         except OSError:
             self.font = ImageFont.load_default()
 
-    def update(self, camera):
+    def update(self, camera, state):
         """
         Update the HUD overlay with current time, date, and camera metadata.
-        Displays exposure time, analogue gain, and white balance temperature.
+        Displays exposure time, analogue gain, white balance, capture resolution and format,
+        the MENU button, and the touch menu when it is open.
 
         Args:
             camera: Picamera2 instance to set the overlay on
+            state: CameraState (capture settings, menu open)
         """
         # Create a transparent image for the overlay
         if self.background_image:
@@ -101,8 +109,33 @@ class HUD:
 
         # Draw Metadata
         draw.text((HUD_PADDING_W, self.preview_size[1] - meta_height - HUD_PADDING_H), meta_str, font=font, fill=HUD_COLOR_BLACK )
-        
+
+        # MENU button + capture settings, top left
+        self._button(draw, menu.MENU_BUTTON, "MENU", HUD_COLOR_ACCENT, HUD_COLOR_BLACK)
+        capture_str = f"{menu.resolution_label(state.capture_resolution)} {state.capture_format}"
+        draw.text((menu.MENU_BUTTON[2] + 12, time_y), capture_str, font=font, fill=HUD_COLOR_WHITE)
+
+        if state.menu_open:
+            self._draw_menu(draw, state)
+
         # Update the overlay
         if PREVIEW_ROTATE:
             overlay_img = overlay_img.rotate(180)
         camera.set_overlay(np.array(overlay_img))
+
+    def _button(self, draw, rect, label, fill, text_fill):
+        draw.rounded_rectangle(rect, radius=10, fill=fill)
+        draw.text(((rect[0] + rect[2]) / 2, (rect[1] + rect[3]) / 2), label, font=self.font, fill=text_fill, anchor="mm")
+
+    def _draw_menu(self, draw, state):
+        """The touch menu, from menu.buttons() (same rects as the hit test)."""
+        draw.rounded_rectangle(menu.PANEL, radius=16, fill=HUD_COLOR_PANEL)
+        x = menu.PANEL[0] + 16
+        draw.text((x, menu.PANEL[1] + 12), "SETTINGS", font=self.font, fill=HUD_COLOR_TEXT)
+        draw.text((x, menu.ROW_RESOLUTION_Y - 34), "RESOLUTION", font=self.font, fill=HUD_COLOR_MUTED)
+        draw.text((x, menu.ROW_FORMAT_Y - 34), "FORMAT", font=self.font, fill=HUD_COLOR_MUTED)
+        for rect, label, selected, _action in menu.buttons(state):
+            if selected:
+                self._button(draw, rect, label, HUD_COLOR_ACCENT, HUD_COLOR_PANEL)
+            else:
+                self._button(draw, rect, label, HUD_COLOR_BUTTON, HUD_COLOR_TEXT)

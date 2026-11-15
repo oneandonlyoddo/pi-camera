@@ -1,11 +1,22 @@
 
 import threading
 from evdev import InputDevice, ecodes, list_devices
+from settings import TOUCH_INVERT_X, TOUCH_INVERT_Y, TOUCH_SWAP_XY
+
+
+def to_screen(raw_x, raw_y, x_range, y_range, swap=TOUCH_SWAP_XY, invert_x=TOUCH_INVERT_X, invert_y=TOUCH_INVERT_Y):
+    """Raw touch values -> (x, y) in 0..1 of the screen as the user sees it. Ranges are (min, max)."""
+    x = min(max((raw_x - x_range[0]) / (x_range[1] - x_range[0]), 0.0), 1.0)
+    y = min(max((raw_y - y_range[0]) / (y_range[1] - y_range[0]), 0.0), 1.0)
+    if swap:
+        x, y = y, x
+    return (1 - x if invert_x else x), (1 - y if invert_y else y)
+
 
 class TouchScreen:
     """
     Touchscreen input handler using evdev.
-    Detects touch events and triggers callbacks.
+    Calls back once per touch-down with the position.
     """
 
     def __init__(self, on_touch_callback=None):
@@ -13,7 +24,7 @@ class TouchScreen:
         Initialize the touchscreen handler.
 
         Args:
-            on_touch_callback: Function to call when screen is touched
+            on_touch_callback: Called as on_touch_callback(x, y) on touch-down, x and y in 0..1 (see to_screen)
         """
         self.device = None
         self.running = False
@@ -68,32 +79,42 @@ class TouchScreen:
         Runs in a background thread.
         """
         try:
-            # Track touch state to trigger only once per touch
-            touch_active = False
+            x_codes = (ecodes.ABS_X, ecodes.ABS_MT_POSITION_X)
+            y_codes = (ecodes.ABS_Y, ecodes.ABS_MT_POSITION_Y)
+            axes = dict(self.device.capabilities()[ecodes.EV_ABS])
+            x_info = next(axes[c] for c in x_codes if c in axes)
+            y_info = next(axes[c] for c in y_codes if c in axes)
+            raw_x, raw_y = x_info.value, y_info.value
+            touch_active = False  # trigger only once per touch
+            pending = False  # touch-down seen; the position arrives in the same report, so fire at SYN
 
             for event in self.device.read_loop():
                 if not self.running:
                     break
 
-                # We're interested in BTN_TOUCH or MT (multi-touch) events
-                if event.type == ecodes.EV_KEY:
-                    if event.code == ecodes.BTN_TOUCH or event.code == ecodes.BTN_LEFT:
-                        if event.value == 1 and not touch_active:  # Touch down
-                            touch_active = True
-                            if self.on_touch_callback:
-                                self.on_touch_callback()
-                        elif event.value == 0:  # Touch up
+                if event.type == ecodes.EV_KEY and event.code in (ecodes.BTN_TOUCH, ecodes.BTN_LEFT):
+                    if event.value == 1 and not touch_active:  # Touch down
+                        touch_active = pending = True
+                    elif event.value == 0:  # Touch up
+                        touch_active = False
+
+                elif event.type == ecodes.EV_ABS:
+                    if event.code in x_codes:
+                        raw_x = event.value
+                    elif event.code in y_codes:
+                        raw_y = event.value
+                    elif event.code == ecodes.ABS_MT_TRACKING_ID:  # multi-touch devices
+                        if event.value != -1 and not touch_active:
+                            touch_active = pending = True
+                        elif event.value == -1:
                             touch_active = False
 
-                # Alternative: detect MT (multi-touch) slot start
-                elif event.type == ecodes.EV_ABS:
-                    if event.code == ecodes.ABS_MT_TRACKING_ID:
-                        if event.value != -1 and not touch_active:  # New touch
-                            touch_active = True
-                            if self.on_touch_callback:
-                                self.on_touch_callback()
-                        elif event.value == -1:  # Touch ended
-                            touch_active = False
+                elif event.type == ecodes.EV_SYN and pending:
+                    pending = False
+                    x, y = to_screen(raw_x, raw_y, (x_info.min, x_info.max), (y_info.min, y_info.max))
+                    print(f"Touch raw=({raw_x}, {raw_y}) screen=({x:.2f}, {y:.2f})")  # for calibration
+                    if self.on_touch_callback:
+                        self.on_touch_callback(x, y)
 
         except OSError as e:
             # Device was disconnected or became unavailable

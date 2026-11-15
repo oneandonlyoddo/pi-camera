@@ -8,6 +8,7 @@ Saves images in JPG and RAW formats. Includes a Flask web server for remote acce
 """
 
 import threading
+from settings import SETTINGS_FILE
 from shared_state import CameraState
 from web.app import app, init_app
 from digital_camera import DigitalCamera
@@ -21,7 +22,8 @@ def main():
     """Main entry point for the camera application."""
     # 1. Initialize Shared State
     camera_state = CameraState()
-    
+    camera_state.load(SETTINGS_FILE)  # gain, WB, resolution, format from the last run
+
     # 2. Initialize Flask App with State
     init_app(camera_state)
     

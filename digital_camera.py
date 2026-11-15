@@ -6,8 +6,6 @@ from picamera2 import Picamera2, Preview
 import libcamera
 from gpiozero import Button
 from settings import (
-    CAPTURE_HEIGHT,
-    CAPTURE_WIDTH,
     FILENAME_PREFIX,
     FILENAME_TIMESTAMP_FORMAT,
     GPIO_BUTTON_PIN,
@@ -22,9 +20,11 @@ from settings import (
     PREVIEW_WINDOW_X,
     PREVIEW_WINDOW_Y,
     RAW_EXTENSION,
+    SETTINGS_FILE,
     TOUCHSCREEN_ENABLED,
 )
 from hud import HUD
+import menu
 
 # Optional: Import touchscreen support
 try:
@@ -45,6 +45,11 @@ def controls_for(gain, colour_temp):
     return controls
 
 
+# Buffers to fetch per capture format (CAPTURE_FORMATS). ["main", "raw"] is the order tested on the
+# device; ["raw", "main"] failed with ENOMEM (docs/SPECS.md). capture_photo saves the DNG first either way (R8).
+CAPTURE_STREAMS = {"JPG": ["main"], "RAW": ["raw"], "JPG+RAW": ["main", "raw"]}
+
+
 class DigitalCamera:
     """Digital camera controller for Raspberry Pi HQ Camera module."""
 
@@ -63,6 +68,7 @@ class DigitalCamera:
         self.running = False
         self.hud = HUD(PREVIEW_WIDTH, PREVIEW_HEIGHT)
         self._last_settings = None  # (gain, colour_temp) last sent to the camera
+        self._last_saved = None  # CameraState.snapshot() last written to SETTINGS_FILE
 
         self.button = None
         if GPIO_CONNECTED:
@@ -73,7 +79,7 @@ class DigitalCamera:
         self.touchscreen = None
         if TOUCHSCREEN_ENABLED and TOUCHSCREEN_AVAILABLE:
             try:
-                self.touchscreen = TouchScreen(on_touch_callback=lambda: self.request_capture("Touchscreen"))
+                self.touchscreen = TouchScreen(on_touch_callback=self.on_touch)
             except Exception as e:
                 print(f"Could not initialize touchscreen: {e}")
         elif TOUCHSCREEN_ENABLED and not TOUCHSCREEN_AVAILABLE:
@@ -111,26 +117,40 @@ class DigitalCamera:
         print(f"{source} - capture requested")
         self.camera_state.shutter_requested = True
 
+    def on_touch(self, x, y):
+        """Touchscreen callback (touch thread): the menu, or the shutter outside it (R2)."""
+        if menu.handle_tap(self.camera_state, x * PREVIEW_WIDTH, y * PREVIEW_HEIGHT):
+            self.request_capture("Touchscreen")
+
     def capture_photo(self):
-        """Capture one exposure and save it as JPG and DNG (same frame)."""
+        """Capture one exposure and save it in the chosen resolution and format (JPG and DNG from the same frame)."""
+        size = self.camera_state.capture_resolution
+        streams = CAPTURE_STREAMS[self.camera_state.capture_format]
         timestamp = datetime.datetime.now().strftime(FILENAME_TIMESTAMP_FORMAT)
         jpg_path = self.photos_dir / f"{FILENAME_PREFIX}_{timestamp}{JPG_EXTENSION}"
         raw_path = jpg_path.with_suffix(RAW_EXTENSION)
-        # No transform: saved photos are upright, PREVIEW_ROTATE is for the display only (R8)
+        # No transform: saved photos are upright, PREVIEW_ROTATE is for the display only (R8).
+        # The raw stream is always configured: its size picks the full-field-of-view sensor mode.
         still_config = self.camera.create_still_configuration(
-            main={"size": (CAPTURE_WIDTH, CAPTURE_HEIGHT)},
-            raw={"size": (CAPTURE_WIDTH, CAPTURE_HEIGHT)},
+            main={"size": size},
+            raw={"size": size},
             buffer_count=2,  # needed on the Pi Zero (docs/SPECS.md)
         )
         try:
-            # Copies both frames, then returns to the preview. Holding the request instead
+            # Copies the frames, then returns to the preview. Holding the request instead
             # (switch_mode_capture_request_and_stop) fails with ENOMEM on the Pi Zero (docs/SPECS.md).
-            (main, raw), metadata = self.camera.switch_mode_and_capture_buffers(still_config, ["main", "raw"])
+            buffers, metadata = self.camera.switch_mode_and_capture_buffers(still_config, streams)
+            buffers = dict(zip(streams, buffers, strict=True))
             helpers = self.camera.helpers
-            helpers.save_dng(raw, metadata, still_config["raw"], str(raw_path))
-            del raw  # free ~18 MB before the JPEG encode needs memory
-            helpers.save(helpers.make_image(main, still_config["main"]), metadata, str(jpg_path))
-            print(f"✓ Photo saved: {jpg_path.name} + {raw_path.name}")
+            saved = []
+            if "raw" in buffers:
+                # popped, so its ~18 MB is freed before the JPEG encode needs memory
+                helpers.save_dng(buffers.pop("raw"), metadata, still_config["raw"], str(raw_path))
+                saved.append(raw_path.name)
+            if "main" in buffers:
+                helpers.save(helpers.make_image(buffers.pop("main"), still_config["main"]), metadata, str(jpg_path))
+                saved.insert(0, jpg_path.name)
+            print(f"✓ Photo saved: {' + '.join(saved)} ({size[0]}x{size[1]})")
         except Exception as e:
             print(f"✗ Error capturing photo: {e}")
 
@@ -162,8 +182,16 @@ class DigitalCamera:
                         print(f"Warning: Failed to apply camera controls: {e}")
                     self._last_settings = settings_now
 
-                self.hud.update(self.camera)
-                self.camera_state.wait_for_shutter(HUD_UPDATE_INTERVAL)
+                snapshot = self.camera_state.snapshot()
+                if snapshot != self._last_saved:
+                    try:
+                        self.camera_state.save(SETTINGS_FILE)
+                    except OSError as e:
+                        print(f"Warning: could not save settings: {e}")
+                    self._last_saved = snapshot
+
+                self.hud.update(self.camera, self.camera_state)
+                self.camera_state.wait(HUD_UPDATE_INTERVAL)
 
         except KeyboardInterrupt:
             print("\nShutting down camera...")

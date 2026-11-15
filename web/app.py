@@ -139,7 +139,7 @@ def serve_thumbnail(filename):
 @app.route('/api/trigger', methods=['POST'])
 def trigger_shutter():
     """Trigger the camera shutter."""
-    camera_state.shutter_requested = True
+    camera_state.request_shutter()
     return jsonify({"status": "ok", "message": "Shutter requested"})
 
 def settings_json():

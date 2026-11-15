@@ -71,17 +71,10 @@ class CameraState:
         self._menu_scroll = 0
         self._preset = ""
 
-    @property
-    def shutter_requested(self):
-        return self._shutter.is_set()
-
-    @shutter_requested.setter
-    def shutter_requested(self, value):
-        if value:
-            self._shutter.set()
-            self._wake.set()
-        else:
-            self._shutter.clear()
+    def request_shutter(self):
+        """Ask the camera loop for one capture (any thread); wakes the loop at once."""
+        self._shutter.set()
+        self._wake.set()
 
     def wait(self, timeout):
         """Block until a shutter request or setting change arrives or `timeout` seconds pass."""

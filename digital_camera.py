@@ -127,7 +127,7 @@ class DigitalCamera:
     def request_capture(self, source):
         """Shutter callback for input threads: only signals the camera loop (R2)."""
         print(f"{source} - capture requested")
-        self.camera_state.shutter_requested = True
+        self.camera_state.request_shutter()
 
     def on_touch(self, kind, x, y):
         """Touchscreen callback (touch thread): "down"/"move"/"up" to the menu, or the shutter outside it (R2)."""

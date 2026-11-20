@@ -7,6 +7,9 @@ Reference images in this folder:
 - ref_03.jpg - High contrast colour scheme, modern round corners, mono space font use
 - colour_scheme.jpg - 4 colours + black.
 
+MENU button bottom right opens a full-screen touch menu (`menu.py`): a settings list (resolution, format, preset, white balance, gain; current value in orange on the right, DONE top right) → an option page per setting (< BACK top left, tap selects and goes back). Lists scroll by dragging; grey scroll bar in the right margin
+
+
 ## Must stay
 - grid overlay but colours can be adjusted to match.
 - a monospace font makes sense 
@@ -28,4 +31,3 @@ Reference images in this folder:
 
 ## Open questions
 - how to get battery status?
-- ~~neat way to access a settings menu~~: MENU button bottom right opens a full-screen touch menu (`menu.py`): a settings list (resolution, format, preset, white balance, gain; current value in orange on the right, DONE top right) → an option page per setting (< BACK top left, tap selects and goes back). Lists scroll by dragging; grey scroll bar in the right margin

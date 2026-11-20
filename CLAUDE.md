@@ -50,6 +50,8 @@ scripts/dev.sh --install  # one-time service install
 
 On the Pi: **never use pip**. Install packages with apt (`python3-picamera2 python3-gpiozero python3-numpy python3-evdev python3-pil python3-flask python3-piexif python3-pidng`, plus `python3-pytest` for tests). To run by hand, stop the service first, because the camera, display and port 5000 can have only one owner: `sudo systemctl stop pi-camera && cd ~/workspace/pi-camera && python3 main.py`.
 
+**Web work without the Pi:** `uv run scripts/web_dev.py` serves the real Flask app on localhost with an in-memory `CameraState` and dummy JPGs in `dev-photos/` (git-ignored; `--photos device-out` for real photos; it refuses `DCIM/`). The shutter does nothing. Web tests also run on the desktop: `uv run --python 3.13 --with pytest --with flask --with pillow pytest tests/test_web.py`. This is a desktop-only check: R10 still needs the Pi before a change is done.
+
 Line endings: the Windows checkout uses CRLF, and files are copied as-is. Keep `*.sh` and `*.service` files LF (pinned in `.gitattributes`).
 
 ## Testing

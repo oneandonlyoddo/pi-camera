@@ -315,6 +315,17 @@ Override the defaults with environment variables: `PI_HOST` (SSH host/alias, def
 - Files you delete locally are not deleted on the Pi.
 - The service starts at boot, restarts after a crash, and stops cleanly (`SIGINT`, same as Ctrl+C).
 
+### Web development without the Pi
+
+The web interface also runs on the desktop, without the camera. You need [uv](https://docs.astral.sh/uv/), which installs Flask and Pillow for the script:
+
+```bash
+uv run scripts/web_dev.py                      # http://localhost:5000
+uv run scripts/web_dev.py --photos device-out  # real photos from dev.sh --shoot
+```
+
+On the first run it makes 30 dummy JPGs in `dev-photos/` (git-ignored) spread over the last few days. Delete the folder to make new ones. Settings are kept in memory only, and the shutter button does nothing. Flask reloads when you edit code or templates. The web tests run on the desktop too: `uv run --python 3.13 --with pytest --with flask --with pillow pytest tests/test_web.py`. Check the result on the Pi (`scripts/dev.sh --check` and `--shoot`) before you call it done.
+
 ## Troubleshooting
 
 ### Camera not detected

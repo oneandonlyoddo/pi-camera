@@ -6,6 +6,8 @@ __pycache__
 
 # On-device captures copied back by scripts/dev.sh --shoot
 device-out/
+# Dummy photos for the desktop web server (scripts/web_dev.py)
+dev-photos/
 .pytest_cache/
 
 # Runtime settings saved by the camera (per device; dev.sh never copies or cleans it)
